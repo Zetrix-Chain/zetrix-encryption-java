@@ -4,7 +4,7 @@
 Java developers can easily implement the encryption module of the ZTXChain blockchain through ZTXChain Java Encryption. You can install it in minutes via Maven or by downloading a jar.
 
 1. [docs](/docs) is the usage documentation of ZTXChain Java Encryption.
-2. [example](/example) is an example of a maven-based project.
+2. [examples](/examples) is an example of a maven-based project.
 3. [libs](/libs)  is the jar package and dependencies of ZTXChain Java Encryption.
 4. [src](/src) is the source code of ZTXChain Java Encryption.
 
