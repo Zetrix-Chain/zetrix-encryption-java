@@ -1,0 +1,51 @@
+# ZTXChain Java encryption
+
+## 简介
+Java开发人员可以轻松通过ZTXChain Java Encryption实现ZTXChain区块链的加密模块。您可以在几分钟内通过Maven或下载jar包的方式完成安装。
+
+1. [docs](/docs) 是 ZTXChain Java Encryption 的使用文档。
+2. [example](/example) 是一个基于maven的项目示例。
+3. [libs](/libs)  是 ZTXChain Java Encryption 的 jar 包以及依赖包。
+4. [src](/src)  是 ZTXChain Java Encryption 的源代码
+
+## 准备环境
+
+适用于JDK 8及以上版本。
+
+## 安装方式
+
+#### 方式一：在Maven项目中加入依赖项（推荐方式）
+在Maven工程中使用ZTXChain Java Encryption，只需在maven配置中加入ZTXChain提供的远程仓库后，在pom.xml中加入相应依赖即可
+
+本文的以4.0.0版本为例说明
+
+maven 远程仓库
+``` xml
+<repository>
+    <id>pubnexus</id>                
+    <url>http://maven.bumo.io/content/groups/public/</url>
+    <releases>
+        <enabled>true</enabled>
+    </releases>
+    <snapshots>
+        <enabled>true</enabled>
+    </snapshots>
+</repository>
+```
+在dependencies标签内加入如下内容：
+``` xml
+<dependency>
+  <groupId>org.zetrix.encryption</groupId>
+  <artifactId>zetrix-encryption</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+#### 方式二：在项目中导入JAR包
+1. 下载Zetrixchain Java Encryption开发包
+2. 解压该开发包
+3. zetrix-encryption-{version}.jar以及附带的libs里的jar导入到您的项目中
+
+## 示例工程
+Zetrix Java Encryption 提供了丰富的示例，供开发者参考
+
+[示例文档入口](/docs)
