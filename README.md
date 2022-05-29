@@ -31,8 +31,3 @@ Add the following to the dependencies tag:
 1. Download Zetrixchain Java Encryption Development Kit
 2. Unzip the development package
 3. Import zetrix-encryption-{version}.jar and the jar from the accompanying libs into your project
-
-## Example project
-Zetrix Java Encryption provides rich examples for developers to refer to
-
-[Example Documentation Entry](/docs)
