@@ -16,7 +16,6 @@ public class TestCrypto {
 	public static void TestKeyStoreWithPrivateKey(String encPrivateKey, String password) {
 		try {
 			//KeyStoreEty keyStore = KeyStore.generateKeyStore(password, encPrivateKey);
-			//难度
 			int n = (int)Math.pow(2, 16);
 			KeyStoreEty keyStore = KeyStore.generateKeyStore(password, encPrivateKey,2);
 			System.out.println(JSON.toJSONString(keyStore));
