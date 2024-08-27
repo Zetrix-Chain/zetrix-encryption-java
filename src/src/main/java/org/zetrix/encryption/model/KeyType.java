@@ -2,7 +2,7 @@ package org.zetrix.encryption.model;
 
 public enum KeyType {
 	/**
-	 * ED25519算法
+	 *Algorithm ED25519 
 	 */
 	ED25519
 }

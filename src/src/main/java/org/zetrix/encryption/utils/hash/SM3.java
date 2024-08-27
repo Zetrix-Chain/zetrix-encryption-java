@@ -175,7 +175,6 @@ public class SM3
 		}
 	}
 
-	// �߼�λ���㺯��
 	private static int FF1j(int X, int Y, int Z)
 	{
 		int tmp = X ^ Y ^ Z;
