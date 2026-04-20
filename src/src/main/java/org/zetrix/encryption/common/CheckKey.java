@@ -8,57 +8,38 @@ import org.zetrix.encryption.model.KeyType;
 import org.zetrix.encryption.utils.hash.SM3Digest;
 
 public class CheckKey {
-	/**
-	 * @param type KeyType.ED25519 or KeyType.ECCSM2
-	 * @param key Private key or public key
-	 * @return true or false
-	 */
-	public static boolean CheckSum(KeyType type, byte[] key) {
-		return checkKey(type, key);
-	}
-	
-	/**
-	 * get hash
-	 * @param type KeyType.ED25519 or KeyType.ECCSM2
-	 * @param data Data before hash
-	 * @return data after hash
-	 */
-	public static byte[] CalHash(KeyType type, byte[] data) {
-		byte[] result = null;
-		if (type == KeyType.ED25519) {
-			MessageDigest sha256 = null;
-			try {
-				sha256 = MessageDigest.getInstance("SHA-256");
 
-			} catch (NoSuchAlgorithmException e) {
-				e.printStackTrace();
-			}
+    public static boolean CheckSum(KeyType type, byte[] key) {
+        return checkKey(type, key);
+    }
 
-			sha256.update(data);
-			result = sha256.digest();
-		}
-		else {
-			result = SM3Digest.Hash(data);
-		}
-		return result;
-	}
-	
-	private static boolean checkKey(KeyType type, byte[] key) {
-		boolean SumIsRight = true;
-		byte[] checkSrc = new byte[key.length - 4];
-		byte[] checkSum = new byte[4];
-		System.arraycopy(key, 0, checkSrc, 0, checkSrc.length);
-		System.arraycopy(key, checkSrc.length, checkSum, 0, 4);
-		
-		byte[] hash1 = CalHash(type, checkSrc);
-		byte[] hash2 = CalHash(type, hash1);
-		
-		byte[] HashSum = new byte[4];
-		System.arraycopy(hash2, 0, HashSum, 0, 4);
-		if (!Arrays.equals(HashSum, checkSum)) {
-			SumIsRight = false;
-		}
-		return SumIsRight;
-	}
-	
+    /**
+     * SM3 for SM2 keys/addresses; SHA-256 for all others (ED25519, DILITHIUM3, HYBRID).
+     */
+    public static byte[] CalHash(KeyType type, byte[] data) {
+        if (type == KeyType.SM2) {
+            return SM3Digest.Hash(data);
+        }
+        try {
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            sha256.update(data);
+            return sha256.digest();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean checkKey(KeyType type, byte[] key) {
+        byte[] checkSrc = new byte[key.length - 4];
+        byte[] checkSum = new byte[4];
+        System.arraycopy(key, 0, checkSrc, 0, checkSrc.length);
+        System.arraycopy(key, checkSrc.length, checkSum, 0, 4);
+
+        byte[] hash1 = CalHash(type, checkSrc);
+        byte[] hash2 = CalHash(type, hash1);
+
+        byte[] hashSum = new byte[4];
+        System.arraycopy(hash2, 0, hashSum, 0, 4);
+        return Arrays.equals(hashSum, checkSum);
+    }
 }

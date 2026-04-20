@@ -4,6 +4,9 @@ import java.security.*;
 import java.util.Arrays;
 
 import org.zetrix.encryption.common.CheckKey;
+import org.zetrix.encryption.crypto.dilithium.Dilithium3Helper;
+import org.zetrix.encryption.crypto.hybrid.HybridHelper;
+import org.zetrix.encryption.crypto.sm2.SM2Helper;
 import org.zetrix.encryption.exception.EncException;
 import org.zetrix.encryption.model.KeyMember;
 import org.zetrix.encryption.model.KeyType;
@@ -19,369 +22,293 @@ import net.i2p.crypto.eddsa.spec.EdDSAPrivateKeySpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 public class PrivateKey {
-	private org.zetrix.encryption.key.PublicKey publicKey = new org.zetrix.encryption.key.PublicKey();
-	private KeyMember keyMember = new KeyMember();
-	
-	/**
-	 * generate key pair (default: ed25519)
-	 * @throws EncException
-	 */
-	public PrivateKey() throws EncException {
-		this(KeyType.ED25519);
-	}
-	
-	/**
-	 * generate key pair
-	 * @param  type the type of key
-	 * @throws EncException 
-	 */
-	public PrivateKey(KeyType type) throws EncException {
-		switch (type) {
-		case ED25519: {
-			KeyPairGenerator keyPairGenerator = new KeyPairGenerator();
-			KeyPair keyPair = keyPairGenerator.generateKeyPair();
-			EdDSAPrivateKey priKey = (EdDSAPrivateKey) keyPair.getPrivate();
-			EdDSAPublicKey pubKey = (EdDSAPublicKey) keyPair.getPublic();
-			keyMember.setRawSKey(priKey.getSeed());
-			publicKey.setRawPublicKey(pubKey.getAbyte());
-			break;
-		}
-		default:
-			throw new EncException("type does not exist");
-		}
-		setKeyType(type);
-		publicKey.setKeyType(type);
-	}
+    private org.zetrix.encryption.key.PublicKey publicKey = new org.zetrix.encryption.key.PublicKey();
+    private KeyMember keyMember = new KeyMember();
 
-	/**
-	 * generate key pair
-	 * @param  seed the seed
-	 */
-	public PrivateKey(byte[] seed) {
-		EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
-		EdDSAPrivateKeySpec privKey = new EdDSAPrivateKeySpec(seed, spec);
-		EdDSAPublicKeySpec spec2 = new EdDSAPublicKeySpec(privKey.getA(),spec);
-		EdDSAPublicKey pDsaPublicKey = new EdDSAPublicKey(spec2);
-		publicKey.setRawPublicKey(pDsaPublicKey.getAbyte());
-		keyMember.setRawSKey(seed);
-		setKeyType(KeyType.ED25519);
-		publicKey.setKeyType(KeyType.ED25519);
-	}
+    /** Generate ED25519 key pair (default). */
+    public PrivateKey() throws EncException {
+        this(KeyType.ED25519);
+    }
 
-	/**
-	 * generate key pair
-	 * @param skey private key
-	 * @throws EncException
-	 */
-	public PrivateKey(String skey) throws EncException {
-		getPrivateKey(skey, keyMember);
-		publicKey.setKeyType(keyMember.getKeyType());
-		byte[] rawPKey = getPublicKey(keyMember);
-		publicKey.setRawPublicKey(rawPKey);
-		keyMember.setRawPKey(rawPKey);
-	}
-	
-	/**
-	 * set key type
-	 * @param keyType key type
-	 */
-	public void setKeyType(KeyType keyType) {
-		keyMember.setKeyType(keyType);
-	}
-	
-	/**
-	 * get key type
-	 * @return key type
-	 */
-	public KeyType getKeyType() {
-		return keyMember.getKeyType();
-	}
-	
-	/**
-	 * set raw private key
-	 * @param rawSKey private key
-	 */
-	public void setRawPrivateKey(byte[] rawSKey) {
-		keyMember.setRawSKey(rawSKey);
-	}
-	
-	/**
-	 * get raw private key
-	 * @return raw private key
-	 */
-	public byte[] getRawPrivateKey() {
-		return keyMember.getRawSKey();
-	}
-	
-	/**
-	 * get public key
-	 * @return public key
-	 */
-	public org.zetrix.encryption.key.PublicKey getPublicKey() {
-		return publicKey;
-	}
-	
-	/**
-	 *
-	 * @return encode private key
-	 * @throws EncException 
-	 */
-	public String getEncPrivateKey() throws EncException {
-		byte[] rawSKey = keyMember.getRawSKey();
-		if (rawSKey == null) {
-			throw new EncException("raw private key is null");
-		}
-		return EncPrivateKey(keyMember.getKeyType(), keyMember.getRawSKey());
-	}
+    /** Generate key pair for the given type. */
+    public PrivateKey(KeyType type) throws EncException {
+        try {
+            switch (type) {
+                case ED25519: {
+                    KeyPairGenerator kpg = new KeyPairGenerator();
+                    java.security.KeyPair kp = kpg.generateKeyPair();
+                    keyMember.setRawSKey(((EdDSAPrivateKey) kp.getPrivate()).getSeed());
+                    publicKey.setRawPublicKey(((EdDSAPublicKey) kp.getPublic()).getAbyte());
+                    break;
+                }
+                case SM2: {
+                    byte[][] kp = SM2Helper.generateKeyPair();
+                    keyMember.setRawSKey(kp[0]);
+                    publicKey.setRawPublicKey(kp[1]);
+                    break;
+                }
+                case DILITHIUM3: {
+                    byte[][] kp = Dilithium3Helper.generateKeyPair();
+                    // Raw blob stored = dil3_priv(4032) || dil3_pub(1952) = 5984 B
+                    byte[] rawBlob = new byte[Dilithium3Helper.DIL3_PRIV_LEN + Dilithium3Helper.DIL3_PUB_LEN];
+                    System.arraycopy(kp[0], 0, rawBlob, 0,                            Dilithium3Helper.DIL3_PRIV_LEN);
+                    System.arraycopy(kp[1], 0, rawBlob, Dilithium3Helper.DIL3_PRIV_LEN, Dilithium3Helper.DIL3_PUB_LEN);
+                    keyMember.setRawSKey(rawBlob);
+                    publicKey.setRawPublicKey(kp[1]);
+                    break;
+                }
+                case HYBRID: {
+                    byte[][] kp = HybridHelper.generateKeyPair();
+                    keyMember.setRawSKey(kp[0]);
+                    publicKey.setRawPublicKey(kp[1]);
+                    break;
+                }
+                default:
+                    throw new EncException("type does not exist");
+            }
+        } catch (EncException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new EncException(e.getMessage());
+        }
+        setKeyType(type);
+        publicKey.setKeyType(type);
+    }
 
-	/**
-	 * @param encPrivateKey encode private key
-	 * @return true or false
-	 */
-	public static boolean isPrivateKeyValid(String encPrivateKey) {
-		return encPrivateKeyValid(encPrivateKey);
-	}
-	
-	
-	/**
-	 *  
-	 * @return encode public key
-	 * @throws EncException 
-	 */
-	public String getEncPublicKey() throws EncException {
-		byte[] rawPKey = publicKey.getRawPublicKey();
-		if (rawPKey == null) {
-			throw new EncException("raw public key is null");
-		}
-		return encPublicKey(keyMember.getKeyType(), rawPKey).toLowerCase();
-	}
+    /** Build from a 32-byte ED25519 seed (backward compat). */
+    public PrivateKey(byte[] seed) {
+        EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
+        EdDSAPrivateKeySpec privSpec = new EdDSAPrivateKeySpec(seed, spec);
+        EdDSAPublicKeySpec  pubSpec  = new EdDSAPublicKeySpec(privSpec.getA(), spec);
+        publicKey.setRawPublicKey(new EdDSAPublicKey(pubSpec).getAbyte());
+        keyMember.setRawSKey(seed);
+        setKeyType(KeyType.ED25519);
+        publicKey.setKeyType(KeyType.ED25519);
+    }
 
-	/**
-	 * @param skey encode private key
-	 * @return encode public key
-	 * @throws EncException 
-	 */
-	public static String getEncPublicKey(String skey) throws EncException {
-		KeyMember member = new KeyMember();
-		getPrivateKey(skey, member);
-		byte[] rawPKey = getPublicKey(member);
-		return encPublicKey(member.getKeyType(), rawPKey).toLowerCase();
-	}
+    /** Load from an encoded private key string. */
+    public PrivateKey(String skey) throws EncException {
+        getPrivateKey(skey, keyMember);
+        publicKey.setKeyType(keyMember.getKeyType());
+        byte[] rawPKey = getPublicKey(keyMember);
+        publicKey.setRawPublicKey(rawPKey);
+        keyMember.setRawPKey(rawPKey);
+    }
 
-	/**
-	 * @param encPublicKey encode public key
-	 * @return true or false
-	 */
-	public static boolean isPublicKeyValid(String encPublicKey) {
-		return org.zetrix.encryption.key.PublicKey.isPublicKeyValid(encPublicKey);
-	}
+    public void setKeyType(KeyType keyType)   { keyMember.setKeyType(keyType); }
+    public KeyType getKeyType()               { return keyMember.getKeyType(); }
+    public void setRawPrivateKey(byte[] raw)  { keyMember.setRawSKey(raw); }
+    public byte[] getRawPrivateKey()          { return keyMember.getRawSKey(); }
+    public org.zetrix.encryption.key.PublicKey getPublicKey() { return publicKey; }
 
-	/**
-	 * @return encode address
-	 * @throws EncException 
-	 */
-	public String getEncAddress() throws EncException {
-		return publicKey.getEncAddress();
-	}
-	
-	/**
-	 * @param pKey encode public key
-	 * @return encode address
-	 * @throws EncException 
-	 */
-	public static String getEncAddress(String pKey) throws EncException {
-		return org.zetrix.encryption.key.PublicKey.getEncAddress(pKey);
-	}
+    public String getEncPrivateKey() throws EncException {
+        byte[] raw = keyMember.getRawSKey();
+        if (raw == null) throw new EncException("raw private key is null");
+        return encPrivateKey(keyMember.getKeyType(), raw);
+    }
 
-	/**
-	 * @param encAddress encode address
-	 * @return true or false
-	 */
-	public static boolean isAddressValid(String encAddress) {
-		return PublicKey.isAddressValid(encAddress);
-	}
-	/**
-	 * sign message
-	 * @param msg message
-	 * @return sign data
-	 * @throws EncException
-	 */
-	public byte[] sign(byte[] msg) throws EncException {
-		return signMessage(msg, keyMember);
-	}
-	
-	/**
-	 * sign message
-	 * @param msg message
-	 * @param skey private key
-	 * @return sign data
-	 * @throws EncException
-	 */
-	public static byte[] sign(byte[] msg, String skey) throws EncException {
-		KeyMember member = new KeyMember();
-		getPrivateKey(skey, member);
-		byte[] rawPKey = getPublicKey(member);
-		member.setRawPKey(rawPKey);
-		return signMessage(msg, member);
-	}
-	
-	private static void getPrivateKey(String bSkey, KeyMember member) throws EncException {
-		try {
-			if (null == bSkey) {
-				throw new EncException("Private key cannot be null");
-			}
+    public static boolean isPrivateKeyValid(String encPrivateKey) {
+        return encPrivateKeyValid(encPrivateKey);
+    }
 
-			byte[] skeyTmp = Base58.decode(bSkey);
-			if (skeyTmp.length <= 9) {
-				throw new EncException("Private key (" + bSkey + ") is invalid");
-			}
+    public String getEncPublicKey() throws EncException {
+        byte[] rawPKey = publicKey.getRawPublicKey();
+        if (rawPKey == null) throw new EncException("raw public key is null");
+        return encPublicKey(keyMember.getKeyType(), rawPKey).toLowerCase();
+    }
 
-			if (skeyTmp[3] != 1) {
-				throw new EncException("Private key (" + bSkey + ") is invalid");
-			}
-			KeyType type = KeyType.values()[skeyTmp[3] - 1];
+    public static String getEncPublicKey(String skey) throws EncException {
+        KeyMember member = new KeyMember();
+        getPrivateKey(skey, member);
+        byte[] rawPKey = getPublicKey(member);
+        return encPublicKey(member.getKeyType(), rawPKey).toLowerCase();
+    }
 
-			// checksum
-			if (!CheckKey.CheckSum(type, skeyTmp)) {
-				throw new EncException("Private key (" + bSkey + ") is invalid");
-			}
+    public static boolean isPublicKeyValid(String encPublicKey) {
+        return org.zetrix.encryption.key.PublicKey.isPublicKeyValid(encPublicKey);
+    }
 
-			byte[] rawSKey = new byte[skeyTmp.length - 9];
-			System.arraycopy(skeyTmp, 4, rawSKey, 0, rawSKey.length);
+    public String getEncAddress() throws EncException {
+        return publicKey.getEncAddress();
+    }
 
-			member.setKeyType(type);
-			member.setRawSKey(rawSKey);
-		} catch (Exception e) {
-			throw new EncException("Invalid privateKey");
-		}
+    public static String getEncAddress(String pKey) throws EncException {
+        return org.zetrix.encryption.key.PublicKey.getEncAddress(pKey);
+    }
 
-	}
-	private static byte[] getPublicKey(KeyMember member) throws EncException {
-		byte[] rawPKey = null;
-		switch (member.getKeyType()) {
-		case ED25519: {
-	        EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
-	        EdDSAPrivateKeySpec privKey = new EdDSAPrivateKeySpec(member.getRawSKey(), spec);
-	        EdDSAPublicKeySpec spec2 = new EdDSAPublicKeySpec(privKey.getA(),spec);
-	        EdDSAPublicKey pDsaPublicKey = new EdDSAPublicKey(spec2);
-	        rawPKey = pDsaPublicKey.getAbyte();
-			break;
-		}
-		default:
-			throw new EncException("Type does not exist");
-		}
-		return rawPKey;
-	}
-	private static String EncPrivateKey(KeyType type, byte[] raw_skey) throws EncException {
-		if (null == raw_skey) {
-			throw new EncException("Private key is null");
-		}
-		byte[] buff = new byte[raw_skey.length + 5];
-		buff[0] = (byte) 0xDA;
-		buff[1] = (byte) 0x37;
-		buff[2] = (byte) 0x9F;
-		System.arraycopy(raw_skey, 0, buff, 4, raw_skey.length);
-		
-		buff[3] = (byte) (type.ordinal() + 1);
-		
-		byte[] hash1 = CheckKey.CalHash(type, buff);
-		byte[] hash2 = CheckKey.CalHash(type, hash1);
+    public static boolean isAddressValid(String encAddress) {
+        return PublicKey.isAddressValid(encAddress);
+    }
 
-		byte[] tmp = new byte[buff.length + 4];
+    public byte[] sign(byte[] msg) throws EncException {
+        return signMessage(msg, keyMember);
+    }
 
-		System.arraycopy(buff, 0, tmp, 0, buff.length);
-		System.arraycopy(hash2, 0, tmp, buff.length, 4);
-		
-		return Base58.encode(tmp);
-	}
-	private static boolean encPrivateKeyValid(String encPrivateKey) {
-		boolean valid;
-		try {
-			if (null == encPrivateKey) {
-				throw new EncException("Invalid privateKey");
-			}
+    public static byte[] sign(byte[] msg, String skey) throws EncException {
+        KeyMember member = new KeyMember();
+        getPrivateKey(skey, member);
+        byte[] rawPKey = getPublicKey(member);
+        member.setRawPKey(rawPKey);
+        return signMessage(msg, member);
+    }
 
-			byte[] privateKeyTemp = Base58.decode(encPrivateKey);
+    // ---- Private helpers ----
 
-			if (privateKeyTemp.length != 41 || privateKeyTemp[0] != (byte)0xDA || privateKeyTemp[1] != (byte)0x37 ||
-					privateKeyTemp[2] != (byte)0x9F || privateKeyTemp[3] != (byte)0x01) {
-				throw new EncException("Invalid privateKey");
-			}
+    /** Decode and validate an encoded private key into the given KeyMember. */
+    private static void getPrivateKey(String bSkey, KeyMember member) throws EncException {
+        try {
+            if (null == bSkey) throw new EncException("Private key cannot be null");
 
-			int len = privateKeyTemp.length;
+            byte[] skeyTmp = Base58.decode(bSkey);
+            if (skeyTmp.length <= 9 || skeyTmp[0] != (byte)0xDA || skeyTmp[1] != (byte)0x37 || skeyTmp[2] != (byte)0x9F) {
+                throw new EncException("Private key (" + bSkey + ") is invalid");
+            }
 
-			byte[] checkSum = new byte[4];
-			System.arraycopy(privateKeyTemp, len - 4, checkSum, 0, 4);
+            // T6b: whitelist-based type lookup (no ordinal math)
+            KeyType type = KeyType.fromSignTypeByte(skeyTmp[3] & 0xFF);
+            if (type == null) {
+                throw new EncException("Private key (" + bSkey + ") is invalid");
+            }
 
-			byte[] buff = new byte[len - 4];
-			System.arraycopy(privateKeyTemp, 0, buff, 0, len - 4);
+            if (!CheckKey.CheckSum(type, skeyTmp)) {
+                throw new EncException("Private key (" + bSkey + ") is invalid");
+            }
 
-			byte[] hash1 = CheckKey.CalHash(KeyType.ED25519, buff);
-			byte[] hash2 = CheckKey.CalHash(KeyType.ED25519, hash1);
+            byte[] rawSKey = new byte[skeyTmp.length - 9];
+            System.arraycopy(skeyTmp, 4, rawSKey, 0, rawSKey.length);
+            member.setKeyType(type);
+            member.setRawSKey(rawSKey);
+        } catch (EncException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new EncException("Invalid privateKey");
+        }
+    }
 
-			byte[] checkSumCol = new byte[4];
-			System.arraycopy(hash2, 0, checkSumCol, 0, 4);
-			if (!Arrays.equals(checkSum, checkSumCol)) {
-				throw new EncException("Invalid privateKey");
-			}
+    /** Derive the raw public key from the raw private key in a KeyMember. */
+    private static byte[] getPublicKey(KeyMember member) throws EncException {
+        try {
+            switch (member.getKeyType()) {
+                case ED25519: {
+                    EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
+                    EdDSAPrivateKeySpec privSpec = new EdDSAPrivateKeySpec(member.getRawSKey(), spec);
+                    EdDSAPublicKeySpec  pubSpec  = new EdDSAPublicKeySpec(privSpec.getA(), spec);
+                    return new EdDSAPublicKey(pubSpec).getAbyte();
+                }
+                case SM2:
+                    return SM2Helper.getPublicKey(member.getRawSKey());
+                case DILITHIUM3:
+                    // Raw blob = dil3_priv(4032) || dil3_pub(1952); public key is the last 1952 B
+                    return Dilithium3Helper.pubKeyFromRawBlob(member.getRawSKey());
+                case HYBRID:
+                    // Re-derive ed25519_pub from seed[0:32]; read dil3_pub from blob[4064:6016]
+                    return HybridHelper.getPublicKey(member.getRawSKey());
+                default:
+                    throw new EncException("Type does not exist");
+            }
+        } catch (EncException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new EncException(e.getMessage());
+        }
+    }
 
-			valid = true;
-		} catch (Exception e) {
-            valid = false;
-		}
-		return valid;
-	}
-	private static String encPublicKey(KeyType type, byte[] raw_pkey) throws EncException {
-		if (null == raw_pkey) {
-			throw new EncException("Public key is null");
-		}
-		int length = raw_pkey.length + 2;
-		byte[] buff = new byte[length];
-		buff[0] = (byte)0xB0;
-		buff[1] = (byte) (type.ordinal() + 1);
+    /** Encode a raw private key to Base58-encoded string. T4 fix: uses getSignTypeByte(). */
+    private static String encPrivateKey(KeyType type, byte[] rawSKey) throws EncException {
+        if (null == rawSKey) throw new EncException("Private key is null");
 
-		System.arraycopy(raw_pkey, 0, buff, 2, raw_pkey.length);
-		
-		byte[] hash1 = CheckKey.CalHash(type, buff);
-		byte[] hash2 = CheckKey.CalHash(type, hash1);
-		byte[] tmp = new byte[buff.length + 4];
+        byte[] buff = new byte[rawSKey.length + 5];
+        buff[0] = (byte) 0xDA;
+        buff[1] = (byte) 0x37;
+        buff[2] = (byte) 0x9F;
+        buff[3] = (byte) type.getSignTypeByte(); // T4: explicit byte, not ordinal+1
+        System.arraycopy(rawSKey, 0, buff, 4, rawSKey.length);
 
-		System.arraycopy(buff, 0, tmp, 0, buff.length);
-		System.arraycopy(hash2, 0, tmp, buff.length, 4);
-		
-		return HexFormat.byteToHex(tmp);
-	}
-	private static byte[] signMessage(byte[] msg, KeyMember member) throws EncException {
-		if (null == member.getRawSKey()) {
-			throw new EncException("Raw private key is null");
-		}
-		byte[] signMsg = null;
+        byte[] hash1 = CheckKey.CalHash(type, buff);
+        byte[] hash2 = CheckKey.CalHash(type, hash1);
 
-		try {
-			switch (member.getKeyType()) {
-				case ED25519: {
-					Signature sgr = new EdDSAEngine(MessageDigest.getInstance("SHA-512"));
-					EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
-					EdDSAPrivateKeySpec sKeySpec = new EdDSAPrivateKeySpec(member.getRawSKey(), spec);
-					EdDSAPrivateKey sKey = new EdDSAPrivateKey(sKeySpec);
-					sgr.initSign(sKey);
-					sgr.update(msg);
+        byte[] tmp = new byte[buff.length + 4];
+        System.arraycopy(buff, 0, tmp, 0, buff.length);
+        System.arraycopy(hash2, 0, tmp, buff.length, 4);
+        return Base58.encode(tmp);
+    }
 
-					signMsg = sgr.sign();
-					break;
-				}
-				default:
-					throw new EncException("Type does not exist");
-			}
-		} catch (NoSuchAlgorithmException e) {
-			throw new EncException("System error");
-		} catch (InvalidKeyException e) {
-			throw new EncException("Invalid privateKey");
-		} catch (SignatureException e) {
-			throw new EncException("Sign message failed");
-		}
-		
-		return signMsg;
-	}
+    /** Validate an encoded private key string. T6 fix: variable length, whitelist type byte. */
+    private static boolean encPrivateKeyValid(String encPrivateKey) {
+        try {
+            if (null == encPrivateKey) return false;
+            byte[] tmp = Base58.decode(encPrivateKey);
 
+            if (tmp.length < 10 || tmp[0] != (byte)0xDA || tmp[1] != (byte)0x37 || tmp[2] != (byte)0x9F) {
+                return false;
+            }
+            // T6: detect type from key byte (no ordinal lookup)
+            KeyType type = KeyType.fromSignTypeByte(tmp[3] & 0xFF);
+            if (type == null) return false;
+
+            int len = tmp.length;
+            byte[] buff    = Arrays.copyOfRange(tmp, 0, len - 4);
+            byte[] checkSum = Arrays.copyOfRange(tmp, len - 4, len);
+
+            byte[] hash1 = CheckKey.CalHash(type, buff);
+            byte[] hash2 = CheckKey.CalHash(type, hash1);
+            return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Encode a raw public key to hex. T5 fix: uses getSignTypeByte(). */
+    static String encPublicKey(KeyType type, byte[] rawPKey) throws EncException {
+        if (null == rawPKey) throw new EncException("Public key is null");
+
+        byte[] buff = new byte[rawPKey.length + 2];
+        buff[0] = (byte) 0xB0;
+        buff[1] = (byte) type.getSignTypeByte(); // T5: explicit byte, not ordinal+1
+        System.arraycopy(rawPKey, 0, buff, 2, rawPKey.length);
+
+        byte[] hash1 = CheckKey.CalHash(type, buff);
+        byte[] hash2 = CheckKey.CalHash(type, hash1);
+
+        byte[] tmp = new byte[buff.length + 4];
+        System.arraycopy(buff,  0, tmp, 0,           buff.length);
+        System.arraycopy(hash2, 0, tmp, buff.length, 4);
+        return HexFormat.byteToHex(tmp);
+    }
+
+    private static byte[] signMessage(byte[] msg, KeyMember member) throws EncException {
+        if (null == member.getRawSKey()) throw new EncException("Raw private key is null");
+        try {
+            switch (member.getKeyType()) {
+                case ED25519: {
+                    Signature sgr = new EdDSAEngine(MessageDigest.getInstance("SHA-512"));
+                    EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
+                    EdDSAPrivateKeySpec sKeySpec = new EdDSAPrivateKeySpec(member.getRawSKey(), spec);
+                    sgr.initSign(new EdDSAPrivateKey(sKeySpec));
+                    sgr.update(msg);
+                    return sgr.sign();
+                }
+                case SM2:
+                    return SM2Helper.sign(msg, member.getRawSKey());
+                case DILITHIUM3:
+                    // Raw blob = dil3_priv(4032) || dil3_pub(1952); use first 4032 B for signing
+                    return Dilithium3Helper.sign(msg,
+                            Arrays.copyOfRange(member.getRawSKey(), 0, Dilithium3Helper.DIL3_PRIV_LEN));
+                case HYBRID:
+                    return HybridHelper.sign(msg, member.getRawSKey());
+                default:
+                    throw new EncException("Type does not exist");
+            }
+        } catch (EncException e) {
+            throw e;
+        } catch (NoSuchAlgorithmException e) {
+            throw new EncException("System error");
+        } catch (InvalidKeyException e) {
+            throw new EncException("Invalid privateKey");
+        } catch (SignatureException e) {
+            throw new EncException("Sign message failed");
+        } catch (Exception e) {
+            throw new EncException(e.getMessage());
+        }
+    }
 }

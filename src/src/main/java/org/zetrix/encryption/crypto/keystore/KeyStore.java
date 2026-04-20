@@ -15,20 +15,27 @@ import org.zetrix.encryption.utils.scrypt.SCrypt;
 public class KeyStore {
 
 	public static KeyStoreEty generateKeyStore(String password, String privateKeyStr, int version) throws EncException {
+		return generateKeyStore(password, privateKeyStr, KeyType.ED25519, version);
+	}
+
+	public static KeyStoreEty generateKeyStore(String password, String privateKeyStr, KeyType keyType, int version) throws EncException {
 		int n = 16384;
 		int r = 8;
 		int p = 1;
-		return generateKeyStore(password, privateKeyStr, n, r, p, version);
+		return generateKeyStore(password, privateKeyStr, keyType, n, r, p, version);
 	}
-	
-	public static KeyStoreEty generateKeyStore(String password, String privateKeyStr,int n,int r,int p,int version) throws EncException{
 
+	public static KeyStoreEty generateKeyStore(String password, String privateKeyStr,int n,int r,int p,int version) throws EncException{
+		return generateKeyStore(password, privateKeyStr, KeyType.ED25519, n, r, p, version);
+	}
+
+	public static KeyStoreEty generateKeyStore(String password, String privateKeyStr, KeyType keyType, int n, int r, int p, int version) throws EncException{
 		String address = "";
-		if (privateKeyStr == null || privateKeyStr.isEmpty() || "".equals(privateKeyStr)) {
-			PrivateKey privateKey = new PrivateKey(KeyType.ED25519);
+		if (privateKeyStr == null || privateKeyStr.isEmpty()) {
+			PrivateKey privateKey = new PrivateKey(keyType);
 			privateKeyStr = privateKey.getEncPrivateKey();
 			address = privateKey.getEncAddress();
-		}else {
+		} else {
 			PrivateKey privateKey = new PrivateKey(privateKeyStr);
 			address = privateKey.getEncAddress();
 		}

@@ -2,6 +2,7 @@ package org.zetrix.encryption.crypto.mnemonic;
 
 import org.zetrix.encryption.exception.EncException;
 import org.zetrix.encryption.key.PrivateKey;
+import org.zetrix.encryption.model.KeyType;
 import org.bitcoinj.crypto.*;
 
 import java.math.BigInteger;
@@ -32,7 +33,23 @@ public class Mnemonic {
         return mnemonicCodes;
     }
 
+    /**
+     * Convenience overload — generates ED25519 keys (original behaviour).
+     */
     public static List<String> generatePrivateKeys(List<String> mnemonicCodes, List<String> hdPaths) throws EncException {
+        return generatePrivateKeys(mnemonicCodes, hdPaths, KeyType.ED25519);
+    }
+
+    /**
+     * Generate private keys from BIP39 mnemonic + HD paths for the given key type.
+     *
+     * NOTE: BIP32/BIP39 derivation is only meaningful for ED25519 — the 32-byte seed
+     * maps directly to the ED25519 seed.  For SM2, DILITHIUM3, and HYBRID the derived
+     * seed is passed to {@link PrivateKey#PrivateKey(byte[])} which treats it as an
+     * ED25519 seed; callers should use {@link PrivateKey#PrivateKey(KeyType)} for PQC
+     * key generation instead.  This overload exists so the API remains consistent.
+     */
+    public static List<String> generatePrivateKeys(List<String> mnemonicCodes, List<String> hdPaths, KeyType keyType) throws EncException {
         if (null == mnemonicCodes || mnemonicCodes.size() == 0) {
             throw new EncException("The size of mnemonicCodes must be bigger than or equal to 0");
         }

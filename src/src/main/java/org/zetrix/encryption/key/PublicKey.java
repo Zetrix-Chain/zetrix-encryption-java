@@ -4,6 +4,9 @@ import java.security.*;
 import java.util.Arrays;
 
 import org.zetrix.encryption.common.CheckKey;
+import org.zetrix.encryption.crypto.dilithium.Dilithium3Helper;
+import org.zetrix.encryption.crypto.hybrid.HybridHelper;
+import org.zetrix.encryption.crypto.sm2.SM2Helper;
 import org.zetrix.encryption.exception.EncException;
 import org.zetrix.encryption.model.KeyMember;
 import org.zetrix.encryption.utils.base.Base58;
@@ -16,281 +19,159 @@ import net.i2p.crypto.eddsa.spec.EdDSAParameterSpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 public class PublicKey {
-	private KeyMember keyMember = new KeyMember();
-	
-	public PublicKey() {
-	}
-	
-	/**
-	 * structure with encrytion public key
-	 */
-	public PublicKey(String encPublicKey) throws EncException {
-		getPublicKey(encPublicKey, keyMember);
-	}
-	
-	/**
-	 * set enc public key
-	 * @param encPublicKey encryption public key
-	 * @throws EncException
-	 */
-	public void setEncPublicKey(String encPublicKey) throws EncException {
-		getPublicKey(encPublicKey, keyMember);
-	}
-	
-	/**
-	 * set raw public key
-	 * @param rawPKey raw public key
-	 */
-	public void setRawPublicKey(byte[] rawPKey) {
-		keyMember.setRawPKey(rawPKey);
-	}
-	
-	/**
-	 * get raw public key
-	 * @return raw public key
-	 */
-	public byte[] getRawPublicKey() {
-		return keyMember.getRawPKey();
-	}
-	
-	/**
-	 * set key type
-	 * @param keyType key type
-	 */
-	public void setKeyType(KeyType keyType) {
-		keyMember.setKeyType(keyType);
-	}
-	
-	/**
-	 * get key type
-	 * @return key type
-	 */
-	private KeyType getKeyType() {
-		return keyMember.getKeyType();
-	}
-	
-	/**
-	 * @return encode address
-	 * @throws EncException 
-	 */
-	public String getEncAddress() throws EncException {
-		byte[] raw_pkey = keyMember.getRawPKey();
-		if (null == raw_pkey) {
-			throw new EncException("public key is null");
-		}
-		
-		return encAddress(keyMember.getKeyType(), raw_pkey);
-	}
-	
-	/**
-	 * @param pKey encode public key
-	 * @return encode address
-	 * @throws EncException 
-	 */
-	public static String getEncAddress(String pKey) throws EncException {
-		KeyMember member = new KeyMember();
-		getPublicKey(pKey, member);
-		
-		return encAddress(member.getKeyType(), member.getRawPKey());
-	}
+    private KeyMember keyMember = new KeyMember();
 
-	/**
-	 * @param encAddress encode address
-	 * @return true or false
-	 */
-	public static boolean isAddressValid(String encAddress) {
-		return encAddressValid(encAddress);
-	}
+    public PublicKey() {}
 
-	/**
-	 * @param encPublicKey encode public key
-	 * @return true or false
-	 */
-	public static boolean isPublicKeyValid(String encPublicKey) {
-		return encPublicKeyValid(encPublicKey);
-	}
+    public PublicKey(String encPublicKey) throws EncException {
+        getPublicKey(encPublicKey, keyMember);
+    }
 
-	/**
-	 * check sign datas
-	 * @param msg source message
-	 * @param signMsg signed message
-	 * @return true or false
-	 * @throws EncException
-	 */
-	public boolean verify(byte[] msg, byte[] signMsg) throws EncException {
-		boolean verifySuccess = verifyMessage(msg, signMsg, keyMember);
-		
-		return verifySuccess;
-	}
-	
-	/**
-	 * check sign datas
-	 * @param msg source message
-	 * @param signMsg signed message
-	 * @param encPublicKey enc public key
-	 * @return true or false
-	 * @throws EncException 
-	 */
-	public static boolean verify(byte[] msg, byte[] signMsg, String encPublicKey) throws EncException {
-		boolean verifySuccess = false;
-		KeyMember member = new KeyMember();
-		getPublicKey(encPublicKey, member);
-		verifySuccess = verifyMessage(msg, signMsg, member);
-		
-		return verifySuccess;
-	}
-	
-	private static void getPublicKey(String bPkey, KeyMember member) throws EncException {
-		if (null == bPkey) {
-			throw new EncException("public key cannot be null");
-		}
+    public void setEncPublicKey(String encPublicKey) throws EncException {
+        getPublicKey(encPublicKey, keyMember);
+    }
 
-		if (!HexFormat.isHexString(bPkey)) {
-			throw new EncException("public key (" + bPkey + ") is invalid, please check");
-		}
+    public void setRawPublicKey(byte[] rawPKey)  { keyMember.setRawPKey(rawPKey); }
+    public byte[] getRawPublicKey()              { return keyMember.getRawPKey(); }
+    public void setKeyType(KeyType keyType)      { keyMember.setKeyType(keyType); }
+    private KeyType getKeyType()                 { return keyMember.getKeyType(); }
 
-		KeyType type = null;
-		byte[] buffPKey = HexFormat.hexToByte(bPkey);
-		
-		if (buffPKey.length < 6) {
-			throw new EncException("public key (" + bPkey + ") is invalid, please check");
-		}
-		
-		if (buffPKey[0] != (byte)0xB0) {
-			throw new EncException("public key (" + bPkey + ") is invalid, please check");
-		}
-		
-		if (buffPKey[1] != 1) {
-			throw new EncException("public key (" + bPkey + ") is invalid, please check");
-		}
-		type = KeyType.values()[buffPKey[1] - 1];
-		
-		// checksum
-		if (!CheckKey.CheckSum(type, buffPKey)) {
-			throw new EncException("public key (" + bPkey + ") is invalid, please check");
-		}
-		
-		byte[] rawPKey = new byte[buffPKey.length - 6];
-		System.arraycopy(buffPKey, 2, rawPKey, 0, rawPKey.length);
-		member.setRawPKey(rawPKey);
-		member.setKeyType(type);
-	}
+    public String getEncAddress() throws EncException {
+        byte[] rawPKey = keyMember.getRawPKey();
+        if (null == rawPKey) throw new EncException("public key is null");
+        return encAddress(keyMember.getKeyType(), rawPKey);
+    }
 
-	private static boolean encPublicKeyValid(String encPublicKey) {
-		boolean valid;
-		try {
-			if (null == encPublicKey) {
-				throw new EncException("Invalid publicKey");
-			}
-			if (!HexFormat.isHexString(encPublicKey)) {
-				throw new EncException("Invalid publicKey");
-			}
+    public static String getEncAddress(String pKey) throws EncException {
+        KeyMember member = new KeyMember();
+        getPublicKey(pKey, member);
+        return encAddress(member.getKeyType(), member.getRawPKey());
+    }
 
-			KeyType type = null;
-			byte[] buffPKey = HexFormat.hexToByte(encPublicKey);
-			if (buffPKey.length < 6 || buffPKey[0] != (byte)0xB0 || buffPKey[1] != (byte)0x01) {
-				throw new EncException("Invalid publicKey");
-			}
+    public static boolean isAddressValid(String encAddress)   { return encAddressValid(encAddress); }
+    public static boolean isPublicKeyValid(String encPublicKey) { return encPublicKeyValid(encPublicKey); }
 
-			int len = buffPKey.length;
-			byte[] checkSum = new byte[4];
-			System.arraycopy(buffPKey, len - 4, checkSum, 0, 4);
+    public boolean verify(byte[] msg, byte[] signMsg) throws EncException {
+        return verifyMessage(msg, signMsg, keyMember);
+    }
 
-			byte[] buff = new byte[len - 4];
-			System.arraycopy(buffPKey, 0, buff, 0, len - 4);
+    public static boolean verify(byte[] msg, byte[] signMsg, String encPublicKey) throws EncException {
+        KeyMember member = new KeyMember();
+        getPublicKey(encPublicKey, member);
+        return verifyMessage(msg, signMsg, member);
+    }
 
-			byte[] hash1 = CheckKey.CalHash(KeyType.ED25519, buff);
-			byte[] hash2 = CheckKey.CalHash(KeyType.ED25519, hash1);
+    /** Decode an encoded public key (hex) into the given KeyMember. T7 fix. */
+    private static void getPublicKey(String bPkey, KeyMember member) throws EncException {
+        if (null == bPkey) throw new EncException("public key cannot be null");
+        if (!HexFormat.isHexString(bPkey)) throw new EncException("public key (" + bPkey + ") is invalid");
 
-			byte[] checkSumCol = new byte[4];
-			System.arraycopy(hash2, 0, checkSumCol, 0, 4);
-			if (!Arrays.equals(checkSum, checkSumCol)) {
-				throw new EncException("Invalid publicKey");
-			}
+        byte[] buffPKey = HexFormat.hexToByte(bPkey);
+        if (buffPKey.length < 6 || buffPKey[0] != (byte)0xB0) {
+            throw new EncException("public key (" + bPkey + ") is invalid");
+        }
 
-			valid = true;
-		} catch (Exception exception) {
-            valid = false;
-		}
-		return valid;
-	}
-	
-	private static String encAddress(KeyType type, byte[] raw_pkey) {
-		byte[] buff = new byte[23];
-		buff[0] = (byte) 0XF0;
-		buff[1] = (byte) 0X26;
-		buff[2] = (byte) (type.ordinal() + 1);
+        // T7: whitelist-based type lookup (no ordinal math, no buffPKey[1] != 1 hardcode)
+        KeyType type = KeyType.fromSignTypeByte(buffPKey[1] & 0xFF);
+        if (type == null) {
+            throw new EncException("public key (" + bPkey + ") is invalid");
+        }
 
-		byte[] hashPkey = CheckKey.CalHash(type, raw_pkey);
-		System.arraycopy(hashPkey, 12, buff, 3, 20);
-		
-		byte[] hash1 = CheckKey.CalHash(type, buff);
-		byte[] hash2 = CheckKey.CalHash(type, hash1);
-		byte[] tmp = new byte[27];
-		
-		System.arraycopy(buff, 0, tmp, 0, buff.length);
-		System.arraycopy(hash2, 0, tmp, buff.length, 4);
-		
-		return Base58.encode(tmp);
-	}
+        if (!CheckKey.CheckSum(type, buffPKey)) {
+            throw new EncException("public key (" + bPkey + ") is invalid");
+        }
 
-	private static boolean encAddressValid(String encAddress) {
-		boolean valid;
-		try {
-			if (null == encAddress) {
-				throw new EncException("Invalid address");
-			}
-			byte[] addressTemp = Base58.decode(encAddress);
-			if (addressTemp.length != 27 || addressTemp[0] != (byte)0XF0 || addressTemp[1] != (byte)0X26
-					|| addressTemp[2] != (byte)0x01) {
-				throw new EncException("Invalid address");
-			}
+        byte[] rawPKey = new byte[buffPKey.length - 6];
+        System.arraycopy(buffPKey, 2, rawPKey, 0, rawPKey.length);
+        member.setRawPKey(rawPKey);
+        member.setKeyType(type);
+    }
 
-			int len = addressTemp.length;
-			byte[] checkSum = new byte[4];
-			System.arraycopy(addressTemp, len - 4, checkSum, 0, 4);
+    /** Validate an encoded public key string. T9 fix: whitelist, detect type for CalHash. */
+    private static boolean encPublicKeyValid(String encPublicKey) {
+        try {
+            if (null == encPublicKey || !HexFormat.isHexString(encPublicKey)) return false;
+            byte[] buff = HexFormat.hexToByte(encPublicKey);
+            if (buff.length < 6 || buff[0] != (byte)0xB0) return false;
 
-			byte[] buff = new byte[len - 4];
-			System.arraycopy(addressTemp, 0, buff, 0, len - 4);
+            KeyType type = KeyType.fromSignTypeByte(buff[1] & 0xFF);
+            if (type == null) return false;
 
-			byte[] hash1 = CheckKey.CalHash(KeyType.ED25519, buff);
-			byte[] hash2 = CheckKey.CalHash(KeyType.ED25519, hash1);
+            int len = buff.length;
+            byte[] body     = Arrays.copyOfRange(buff, 0, len - 4);
+            byte[] checkSum = Arrays.copyOfRange(buff, len - 4, len);
 
-			byte[] checkSumCol = new byte[4];
-			System.arraycopy(hash2, 0, checkSumCol, 0, 4);
-			if (!Arrays.equals(checkSum, checkSumCol)) {
-				throw new EncException("Invalid address");
-			}
+            byte[] hash1 = CheckKey.CalHash(type, body);
+            byte[] hash2 = CheckKey.CalHash(type, hash1);
+            return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
-			valid = true;
-		} catch (Exception e) {
-            valid = false;
-		}
+    /** Encode raw public key + address into Base58 address. T8 fix: uses getAddressByte(). */
+    private static String encAddress(KeyType type, byte[] rawPKey) {
+        byte[] buff = new byte[23];
+        buff[0] = (byte) 0xF0;
+        buff[1] = (byte) 0x26;
+        buff[2] = (byte) type.getAddressByte(); // T8: explicit address byte, not ordinal+1
 
-		return valid;
-	}
-	
-	private static boolean verifyMessage(byte[] msg, byte[] sign, KeyMember member) {
-		boolean verifySuccess;
-		try {
-			switch (member.getKeyType()) {
-				case ED25519: {
-					Signature sgr = new EdDSAEngine(MessageDigest.getInstance("SHA-512"));
-					EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
-					EdDSAPublicKeySpec eddsaPubKey = new EdDSAPublicKeySpec(member.getRawPKey(), spec);
-					EdDSAPublicKey vKey = new EdDSAPublicKey(eddsaPubKey);
-					sgr.initVerify(vKey);
-					sgr.update(msg);
-					verifySuccess = sgr.verify(sign);
-					break;
-				}
-				default:
-					throw new EncException("type does not exist");
-			}
-		} catch (Exception e) {
-            verifySuccess = false;
-		}
+        byte[] hashPkey = CheckKey.CalHash(type, rawPKey);
+        System.arraycopy(hashPkey, 12, buff, 3, 20);
 
-		return verifySuccess;
-	}
+        byte[] hash1 = CheckKey.CalHash(type, buff);
+        byte[] hash2 = CheckKey.CalHash(type, hash1);
+
+        byte[] tmp = new byte[27];
+        System.arraycopy(buff,  0, tmp, 0,           buff.length);
+        System.arraycopy(hash2, 0, tmp, buff.length, 4);
+        return Base58.encode(tmp);
+    }
+
+    /** Validate an encoded address string. T9 fix: whitelist addr byte, detect type for CalHash. */
+    private static boolean encAddressValid(String encAddress) {
+        try {
+            if (null == encAddress) return false;
+            byte[] tmp = Base58.decode(encAddress);
+            if (tmp.length != 27 || tmp[0] != (byte)0xF0 || tmp[1] != (byte)0x26) return false;
+
+            // T9: whitelist address byte {0x01, 0x02, 0x04, 0x06}; detect type for CalHash
+            KeyType type = KeyType.fromAddressByte(tmp[2] & 0xFF);
+            if (type == null) return false;
+
+            byte[] body     = Arrays.copyOfRange(tmp, 0, 23);
+            byte[] checkSum = Arrays.copyOfRange(tmp, 23, 27);
+
+            byte[] hash1 = CheckKey.CalHash(type, body);
+            byte[] hash2 = CheckKey.CalHash(type, hash1);
+            return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean verifyMessage(byte[] msg, byte[] sig, KeyMember member) {
+        try {
+            switch (member.getKeyType()) {
+                case ED25519: {
+                    Signature sgr = new EdDSAEngine(MessageDigest.getInstance("SHA-512"));
+                    EdDSAParameterSpec spec = EdDSANamedCurveTable.getByName("ed25519-sha-512");
+                    EdDSAPublicKeySpec pubSpec = new EdDSAPublicKeySpec(member.getRawPKey(), spec);
+                    sgr.initVerify(new EdDSAPublicKey(pubSpec));
+                    sgr.update(msg);
+                    return sgr.verify(sig);
+                }
+                case SM2:
+                    return SM2Helper.verify(msg, sig, member.getRawPKey());
+                case DILITHIUM3:
+                    return Dilithium3Helper.verify(msg, sig, member.getRawPKey());
+                case HYBRID:
+                    return HybridHelper.verify(msg, sig, member.getRawPKey());
+                default:
+                    return false;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

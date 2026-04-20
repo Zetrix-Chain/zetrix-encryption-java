@@ -1,13 +1,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	
+
 	<parent>
         <groupId>org.zetrix.encryption</groupId>
 		<artifactId>zetrix-encryption-java</artifactId>
 		<version>1.0.0.RELEASE</version>
     </parent>
-	
+
 	<artifactId>zetrix-encryption</artifactId>
 	<packaging>jar</packaging>
 	<dependencies>
@@ -25,6 +25,20 @@
 			<groupId>org.bitcoinj</groupId>
 			<artifactId>bitcoinj-core</artifactId>
 			<version>0.14.7</version>
+			<exclusions>
+				<!-- Exclude Spongy Castle (BC fork, same org.bouncycastle.* namespace) to avoid
+				     classloader conflicts when bcprov-jdk18on is on the classpath. -->
+				<exclusion>
+					<groupId>com.madgag.spongycastle</groupId>
+					<artifactId>core</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!-- Bouncy Castle: SM2, ML-DSA-65 (FIPS 204), SM3. "jdk18on" = Java 1.8+. -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.78.1</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -33,8 +47,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.8</source>
+					<target>1.8</target>
 					<encoding>UTF-8</encoding>
 					<optimize>false</optimize>
 					<debug>true</debug>
