@@ -89,18 +89,40 @@ public class HybridHelper {
      * Returns ed25519_sig(64B) || dil3_sig(3309B) = 3373 B.
      */
     public static byte[] sign(byte[] msg, byte[] rawPriv) throws Exception {
+        // Validate input key size per FIPS 204 Hybrid specification
+        if (rawPriv.length != HYBRID_PRIV_LEN) {
+            throw new IllegalArgumentException(
+                String.format("Hybrid private key size mismatch: expected %d bytes, got %d bytes",
+                    HYBRID_PRIV_LEN, rawPriv.length));
+        }
+        
         // ED25519 sign
         byte[] edSeed = Arrays.copyOfRange(rawPriv, 0, ED25519_SEED_LEN);
         byte[] edSig = signEd25519(msg, edSeed);
+        
+        // Validate ED25519 signature size
+        if (edSig.length != ED25519_SIG_LEN) {
+            throw new RuntimeException(
+                String.format("ED25519 signature size mismatch: expected %d bytes, got %d bytes",
+                    ED25519_SIG_LEN, edSig.length));
+        }
 
         // Dilithium3 sign
         byte[] dil3PrivBlob = Arrays.copyOfRange(rawPriv, ED25519_SEED_LEN,
                 ED25519_SEED_LEN + Dilithium3Helper.DIL3_PRIV_LEN);
         byte[] dil3Sig = Dilithium3Helper.sign(msg, dil3PrivBlob);
 
+        // Validate combined signature size
         byte[] combined = new byte[HYBRID_SIG_LEN];
         System.arraycopy(edSig,   0, combined, 0,              ED25519_SIG_LEN);
         System.arraycopy(dil3Sig, 0, combined, ED25519_SIG_LEN, Dilithium3Helper.DIL3_SIG_LEN);
+        
+        if (combined.length != HYBRID_SIG_LEN) {
+            throw new RuntimeException(
+                String.format("Hybrid signature size mismatch: expected %d bytes, got %d bytes",
+                    HYBRID_SIG_LEN, combined.length));
+        }
+        
         return combined;
     }
 

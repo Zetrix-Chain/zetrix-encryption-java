@@ -2,6 +2,7 @@ package org.zetrix.encryption.key;
 
 import java.security.*;
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 import org.zetrix.encryption.common.CheckKey;
 import org.zetrix.encryption.crypto.dilithium.Dilithium3Helper;
@@ -22,6 +23,7 @@ import net.i2p.crypto.eddsa.spec.EdDSAPrivateKeySpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 public class PrivateKey {
+    private static final Logger logger = Logger.getLogger(PrivateKey.class.getName());
     private org.zetrix.encryption.key.PublicKey publicKey = new org.zetrix.encryption.key.PublicKey();
     private KeyMember keyMember = new KeyMember();
 
@@ -286,16 +288,27 @@ public class PrivateKey {
                     EdDSAPrivateKeySpec sKeySpec = new EdDSAPrivateKeySpec(member.getRawSKey(), spec);
                     sgr.initSign(new EdDSAPrivateKey(sKeySpec));
                     sgr.update(msg);
-                    return sgr.sign();
+                    byte[] sig = sgr.sign();
+                    logger.fine("ED25519 signature: " + sig.length + " bytes");
+                    return sig;
                 }
                 case SM2:
                     return SM2Helper.sign(msg, member.getRawSKey());
-                case DILITHIUM3:
+                case DILITHIUM3: {
                     // Raw blob = dil3_priv(4032) || dil3_pub(1952); use first 4032 B for signing
-                    return Dilithium3Helper.sign(msg,
-                            Arrays.copyOfRange(member.getRawSKey(), 0, Dilithium3Helper.DIL3_PRIV_LEN));
-                case HYBRID:
-                    return HybridHelper.sign(msg, member.getRawSKey());
+                    byte[] privKeyBytes = Arrays.copyOfRange(member.getRawSKey(), 0, Dilithium3Helper.DIL3_PRIV_LEN);
+                    logger.fine("Dilithium3 signing: private key blob size=" + member.getRawSKey().length + 
+                               " bytes, extracted priv key size=" + privKeyBytes.length + " bytes");
+                    byte[] sig = Dilithium3Helper.sign(msg, privKeyBytes);
+                    logger.fine("Dilithium3 signature: " + sig.length + " bytes");
+                    return sig;
+                }
+                case HYBRID: {
+                    logger.fine("Hybrid signing: private key blob size=" + member.getRawSKey().length + " bytes");
+                    byte[] sig = HybridHelper.sign(msg, member.getRawSKey());
+                    logger.fine("Hybrid signature: " + sig.length + " bytes (ED25519 64B + Dilithium3 3309B)");
+                    return sig;
+                }
                 default:
                     throw new EncException("Type does not exist");
             }
