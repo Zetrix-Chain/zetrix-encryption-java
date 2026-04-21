@@ -5,7 +5,7 @@
 	<parent>
         <groupId>org.zetrix.encryption</groupId>
 		<artifactId>zetrix-encryption-java</artifactId>
-		<version>1.0.0.RELEASE</version>
+		<version>1.1.0.RELEASE</version>
     </parent>
 
 	<artifactId>zetrix-encryption</artifactId>
@@ -25,20 +25,18 @@
 			<groupId>org.bitcoinj</groupId>
 			<artifactId>bitcoinj-core</artifactId>
 			<version>0.14.7</version>
-			<exclusions>
-				<!-- Exclude Spongy Castle (BC fork, same org.bouncycastle.* namespace) to avoid
-				     classloader conflicts when bcprov-jdk18on is on the classpath. -->
-				<exclusion>
-					<groupId>com.madgag.spongycastle</groupId>
-					<artifactId>core</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
 		<!-- Bouncy Castle: SM2, ML-DSA-65 (FIPS 204), SM3. "jdk18on" = Java 1.8+. -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.78.1</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<build>
@@ -91,7 +89,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<skip>true</skip>
+					<skip>false</skip>
 				</configuration>
 			</plugin>
 		</plugins>
