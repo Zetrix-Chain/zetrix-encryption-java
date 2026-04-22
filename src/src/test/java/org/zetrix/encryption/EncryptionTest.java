@@ -11,6 +11,9 @@ import org.zetrix.encryption.key.PrivateKey;
 import org.zetrix.encryption.key.PublicKey;
 import org.zetrix.encryption.model.KeyType;
 
+import org.zetrix.encryption.utils.base.Base58;
+import org.zetrix.encryption.utils.hex.HexFormat;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -197,9 +200,23 @@ public class EncryptionTest {
     @Test
     public void cfcaByteRejected() throws Exception {
         if (type != KeyType.ED25519) return; // run once
-        assertFalse("CFCA sign byte 0x04 must be invalid as private key",
-            PrivateKey.isPrivateKeyValid("cfcafakekey"));
-        assertFalse("CFCA sign byte 0x04 must be invalid as public key",
-            PrivateKey.isPublicKeyValid("cfcafakekey"));
+
+        // Private key: craft a blob with valid magic (0xDA 0x37 0x9F) but type byte 0x04
+        // (CFCA byte — not in whitelist {0x01, 0x02, 0x05, 0x06}). Checksum is zeros;
+        // the whitelist check fires before checksum so this exercises fromSignTypeByte rejection.
+        byte[] privBlob = new byte[41]; // 4 header + 32 raw + 1 zero pad + 4 checksum
+        privBlob[0] = (byte) 0xDA;
+        privBlob[1] = (byte) 0x37;
+        privBlob[2] = (byte) 0x9F;
+        privBlob[3] = (byte) 0x04; // CFCA sign type byte — not whitelisted
+        assertFalse("CFCA sign byte 0x04 must be rejected as private key",
+            PrivateKey.isPrivateKeyValid(Base58.encode(privBlob)));
+
+        // Public key: craft a hex-encoded blob with magic 0xB0 and type byte 0x04
+        byte[] pubBlob = new byte[38]; // 2 header + 32 raw + 4 checksum
+        pubBlob[0] = (byte) 0xB0;
+        pubBlob[1] = (byte) 0x04; // CFCA sign type byte — not whitelisted
+        assertFalse("CFCA sign byte 0x04 must be rejected as public key",
+            PrivateKey.isPublicKeyValid(HexFormat.byteToHex(pubBlob)));
     }
 }

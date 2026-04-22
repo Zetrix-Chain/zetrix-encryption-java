@@ -26,11 +26,12 @@
 			<artifactId>bitcoinj-core</artifactId>
 			<version>0.14.7</version>
 		</dependency>
-		<!-- Bouncy Castle: SM2, ML-DSA-65 (FIPS 204), SM3. "jdk18on" = Java 1.8+. -->
+		<!-- Bouncy Castle: SM2, ML-DSA-65 (FIPS 204), SM3. Pinned to [1.80]: reflection on
+		     internalGenerateSignature/internalVerifySignature breaks if BC is upgraded. -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcprov-jdk18on</artifactId>
-			<version>1.80</version>
+			<version>[1.80]</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>

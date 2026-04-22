@@ -29,6 +29,7 @@ import java.util.Arrays;
 public class SM2Helper {
 
     private static final String CURVE_NAME = "sm2p256v1";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private static ECDomainParameters ecSpec() {
         ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec(CURVE_NAME);
@@ -39,7 +40,7 @@ public class SM2Helper {
     public static byte[][] generateKeyPair() {
         ECDomainParameters ec = ecSpec();
         ECKeyPairGenerator gen = new ECKeyPairGenerator();
-        gen.init(new ECKeyGenerationParameters(ec, new SecureRandom()));
+        gen.init(new ECKeyGenerationParameters(ec, SECURE_RANDOM));
         AsymmetricCipherKeyPair kp = gen.generateKeyPair();
 
         ECPrivateKeyParameters priv = (ECPrivateKeyParameters) kp.getPrivate();
@@ -68,7 +69,7 @@ public class SM2Helper {
                 new BigInteger(1, privKeyBytes), ec);
 
         SM2Signer signer = new SM2Signer();
-        signer.init(true, new ParametersWithRandom(privKey, new SecureRandom()));
+        signer.init(true, new ParametersWithRandom(privKey, SECURE_RANDOM));
         signer.update(msg, 0, msg.length);
         byte[] derSig = signer.generateSignature();
         return derToRaw(derSig);

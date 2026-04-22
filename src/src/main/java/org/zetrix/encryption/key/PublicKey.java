@@ -2,6 +2,7 @@ package org.zetrix.encryption.key;
 
 import java.security.*;
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 import org.zetrix.encryption.common.CheckKey;
 import org.zetrix.encryption.crypto.dilithium.Dilithium3Helper;
@@ -19,6 +20,7 @@ import net.i2p.crypto.eddsa.spec.EdDSAParameterSpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 public class PublicKey {
+    private static final Logger logger = Logger.getLogger(PublicKey.class.getName());
     private KeyMember keyMember = new KeyMember();
 
     public PublicKey() {}
@@ -97,6 +99,10 @@ public class PublicKey {
             KeyType type = KeyType.fromSignTypeByte(buff[1] & 0xFF);
             if (type == null) return false;
 
+            // Validate raw public key length: buff = 2 header + rawPKey + 4 checksum = rawPKey + 6
+            int expectedRawLen = expectedPubRawLen(type);
+            if (buff.length - 6 != expectedRawLen) return false;
+
             int len = buff.length;
             byte[] body     = Arrays.copyOfRange(buff, 0, len - 4);
             byte[] checkSum = Arrays.copyOfRange(buff, len - 4, len);
@@ -106,6 +112,16 @@ public class PublicKey {
             return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static int expectedPubRawLen(KeyType type) {
+        switch (type) {
+            case ED25519:   return 32;
+            case SM2:       return 65;
+            case DILITHIUM3:return Dilithium3Helper.DIL3_PUB_LEN; // 1952
+            case HYBRID:    return HybridHelper.HYBRID_PUB_LEN;   // 1984
+            default:        return -1;
         }
     }
 
@@ -171,6 +187,7 @@ public class PublicKey {
                     return false;
             }
         } catch (Exception e) {
+            logger.fine("verifyMessage failed for type " + member.getKeyType() + ": " + e.getMessage());
             return false;
         }
     }

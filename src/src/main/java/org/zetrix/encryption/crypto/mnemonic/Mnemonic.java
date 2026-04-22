@@ -41,15 +41,19 @@ public class Mnemonic {
     }
 
     /**
-     * Generate private keys from BIP39 mnemonic + HD paths for the given key type.
+     * Generate ED25519 private keys from BIP39 mnemonic + HD paths.
+     * Only ED25519 is supported: BIP32 seed derivation yields a 32-byte scalar
+     * that maps directly to an ED25519 seed. PQC types (SM2, DILITHIUM3, HYBRID)
+     * require dedicated key generation via {@link PrivateKey#PrivateKey(KeyType)}.
      *
-     * NOTE: BIP32/BIP39 derivation is only meaningful for ED25519 — the 32-byte seed
-     * maps directly to the ED25519 seed.  For SM2, DILITHIUM3, and HYBRID the derived
-     * seed is passed to {@link PrivateKey#PrivateKey(byte[])} which treats it as an
-     * ED25519 seed; callers should use {@link PrivateKey#PrivateKey(KeyType)} for PQC
-     * key generation instead.  This overload exists so the API remains consistent.
+     * @throws UnsupportedOperationException if keyType is not ED25519
      */
     public static List<String> generatePrivateKeys(List<String> mnemonicCodes, List<String> hdPaths, KeyType keyType) throws EncException {
+        if (keyType != KeyType.ED25519) {
+            throw new UnsupportedOperationException(
+                "Mnemonic derivation is only supported for ED25519. " +
+                "Use PrivateKey(KeyType) for " + keyType + " key generation.");
+        }
         if (null == mnemonicCodes || mnemonicCodes.size() == 0) {
             throw new EncException("The size of mnemonicCodes must be bigger than or equal to 0");
         }

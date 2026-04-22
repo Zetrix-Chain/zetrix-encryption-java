@@ -37,6 +37,7 @@ public class Dilithium3Helper {
     public static final int DIL3_SIG_LEN  = 3309;
 
     private static final MLDSAParameters PARAMS = MLDSAParameters.ml_dsa_65;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private static final Method INTERNAL_SIGN;
     private static final Method INTERNAL_VERIFY;
@@ -60,7 +61,7 @@ public class Dilithium3Helper {
     /** Generate a new ML-DSA-65 key pair. Returns {privKey(4032B), pubKey(1952B)}. */
     public static byte[][] generateKeyPair() {
         MLDSAKeyPairGenerator gen = new MLDSAKeyPairGenerator();
-        gen.init(new MLDSAKeyGenerationParameters(new SecureRandom(), PARAMS));
+        gen.init(new MLDSAKeyGenerationParameters(SECURE_RANDOM, PARAMS));
         org.bouncycastle.crypto.AsymmetricCipherKeyPair kp = gen.generateKeyPair();
 
         MLDSAPrivateKeyParameters priv = (MLDSAPrivateKeyParameters) kp.getPrivate();
@@ -81,7 +82,7 @@ public class Dilithium3Helper {
 
             // 32-byte random value for hedged signing (rnd != 0 prevents fault attacks).
             byte[] rnd = new byte[32];
-            new SecureRandom().nextBytes(rnd);
+            SECURE_RANDOM.nextBytes(rnd);
 
             byte[] signature = (byte[]) INTERNAL_SIGN.invoke(signer, msg, rnd);
 

@@ -248,6 +248,10 @@ public class PrivateKey {
             KeyType type = KeyType.fromSignTypeByte(tmp[3] & 0xFF);
             if (type == null) return false;
 
+            // Validate raw key length: blob = 4 header + rawKey + 1 zero + 4 checksum = rawKey + 9
+            int expectedRawLen = expectedPrivRawLen(type);
+            if (tmp.length - 9 != expectedRawLen) return false;
+
             int len = tmp.length;
             byte[] buff    = Arrays.copyOfRange(tmp, 0, len - 4);
             byte[] checkSum = Arrays.copyOfRange(tmp, len - 4, len);
@@ -257,6 +261,16 @@ public class PrivateKey {
             return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static int expectedPrivRawLen(KeyType type) {
+        switch (type) {
+            case ED25519:   return 32;
+            case SM2:       return 32;
+            case DILITHIUM3:return Dilithium3Helper.DIL3_PRIV_LEN + Dilithium3Helper.DIL3_PUB_LEN; // 5984
+            case HYBRID:    return HybridHelper.HYBRID_PRIV_LEN; // 6016
+            default:        return -1;
         }
     }
 

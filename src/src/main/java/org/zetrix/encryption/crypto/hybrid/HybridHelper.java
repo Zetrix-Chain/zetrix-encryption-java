@@ -8,7 +8,6 @@ import net.i2p.crypto.eddsa.spec.EdDSAParameterSpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPrivateKeySpec;
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 import org.zetrix.encryption.crypto.dilithium.Dilithium3Helper;
-import org.zetrix.encryption.crypto.sm2.SM2Helper;
 
 import java.security.KeyPair;
 import java.util.Arrays;
@@ -112,17 +111,9 @@ public class HybridHelper {
                 ED25519_SEED_LEN + Dilithium3Helper.DIL3_PRIV_LEN);
         byte[] dil3Sig = Dilithium3Helper.sign(msg, dil3PrivBlob);
 
-        // Validate combined signature size
         byte[] combined = new byte[HYBRID_SIG_LEN];
         System.arraycopy(edSig,   0, combined, 0,              ED25519_SIG_LEN);
         System.arraycopy(dil3Sig, 0, combined, ED25519_SIG_LEN, Dilithium3Helper.DIL3_SIG_LEN);
-        
-        if (combined.length != HYBRID_SIG_LEN) {
-            throw new RuntimeException(
-                String.format("Hybrid signature size mismatch: expected %d bytes, got %d bytes",
-                    HYBRID_SIG_LEN, combined.length));
-        }
-        
         return combined;
     }
 

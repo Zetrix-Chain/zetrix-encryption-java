@@ -11,11 +11,11 @@
 - `Dilithium3Helper.java` — ML-DSA-65 key generation, sign (`internalGenerateSignature` via reflection, matching `sign_internal` on the blockchain node), verify
 - `HybridHelper.java` — Hybrid key generation, sign, verify; both sub-signatures required for verification
 - `KeyStore.generateKeyStore(password, privKey, KeyType, version)` overload — supports all four key types; original signature preserved for backward compatibility
-- `Mnemonic.generatePrivateKeys(mnemonics, hdPaths, KeyType)` overload — supports SM2; ED25519 default preserved
+- `Mnemonic.generatePrivateKeys(mnemonics, hdPaths, KeyType)` overload — ED25519 only; throws `UnsupportedOperationException` for PQC types (BIP32 derivation is only meaningful for ED25519)
 
 ### Changed
 - `pom.xml` Java source/target upgraded from 1.7 to **1.8**
-- `pom.xml` added `org.bouncycastle:bcprov-jdk18on:1.80`; excluded `com.madgag.spongycastle:core` from `bitcoinj-core` to prevent classpath conflicts
+- `pom.xml` added `org.bouncycastle:bcprov-jdk18on:1.80` (version pinned as `[1.80]` to prevent accidental BC upgrades breaking the reflection-based `internalGenerateSignature` call)
 - `CheckKey.CalHash()` — now dispatches SM3 for SM2, SHA-256 for all other types (previously used SHA-256 only or had an incorrect `else→SM3` branch)
 - `PrivateKey.encPrivateKey()` / `encPublicKey()` — replaced `type.ordinal()+1` with `type.getSignTypeByte()`
 - `PrivateKey.encPrivateKeyValid()` / `getPrivateKey()` — removed hardcoded ED25519-only length and type byte checks; accept variable-length keys; whitelist type bytes `{0x01, 0x02, 0x05, 0x06}`
