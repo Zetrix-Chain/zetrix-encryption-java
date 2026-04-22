@@ -15,6 +15,14 @@
 		<module>examples</module>
     </modules>
 
+    <distributionManagement>
+        <repository>
+            <id>zetrix-releases</id>
+            <name>releases</name>
+            <url>https://maven.zetrix.com/repository/releases/</url>
+        </repository>
+    </distributionManagement>
+
     <build>
         <pluginManagement>
             <plugins>
