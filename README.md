@@ -22,13 +22,13 @@ Java cryptographic library for the Zetrix blockchain. Supports four key algorith
 <dependency>
   <groupId>org.zetrix.encryption</groupId>
   <artifactId>zetrix-encryption</artifactId>
-  <version>1.1.0.RELEASE</version>
+  <version>1.2.0.RELEASE</version>
 </dependency>
 ```
 
 ### JAR
 
-Download `zetrix-encryption-1.1.0.RELEASE.jar` from `libs/` and add it to your project classpath along with the bundled dependencies.
+Download `zetrix-encryption-1.2.0.RELEASE.jar` from `libs/` and add it to your project classpath along with the bundled dependencies.
 
 ## Supported Algorithms
 
@@ -111,6 +111,22 @@ List<String> sm2Keys = Mnemonic.generatePrivateKeys(words, hdPaths, KeyType.SM2)
 ```
 
 > **Note:** Mnemonic/HD derivation for Dilithium3 and Hybrid is an SDK-only feature. The Zetrix blockchain does not support HD derivation for PQC key types — keys generated from a mnemonic cannot be recovered on-chain.
+
+## HTTPS and node certificates
+
+`HttpKit` checks the server certificate and hostname on every HTTPS call, using the JVM's default trust store. A node whose certificate is expired, self-signed, signed by a CA the JVM does not trust, or issued for a different hostname is refused with an `SSLHandshakeException`. Before 1.2.0.RELEASE these checks were switched off.
+
+Use an `https://` node URL in production. Plain `http://` URLs still work but are not encrypted, so their traffic can be read or altered on the network.
+
+The public Zetrix nodes (`https://node.zetrix.com`, `https://test-node.zetrix.com`) use a GlobalSign certificate that current JDKs trust. If you run on an old Java 8 build and the connection is refused, update the JDK.
+
+To reach a node that uses a private or internal CA, give the JVM a trust store that contains that CA:
+
+```bash
+java -Djavax.net.ssl.trustStore=/path/to/truststore.p12      -Djavax.net.ssl.trustStorePassword=<password>      -Djavax.net.ssl.trustStoreType=PKCS12      -jar your-app.jar
+```
+
+or import the CA into the JDK's `cacerts` with `keytool -importcert -cacerts -alias <name> -file ca.crt`. Do not turn certificate checks off.
 
 ## Running the Examples
 
