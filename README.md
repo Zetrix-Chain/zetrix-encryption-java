@@ -22,13 +22,13 @@ Java cryptographic library for the Zetrix blockchain. Supports four key algorith
 <dependency>
   <groupId>org.zetrix.encryption</groupId>
   <artifactId>zetrix-encryption</artifactId>
-  <version>1.2.0.RELEASE</version>
+  <version>1.2.1.RELEASE</version>
 </dependency>
 ```
 
 ### JAR
 
-Download `zetrix-encryption-1.2.0.RELEASE.jar` from `libs/` and add it to your project classpath along with the bundled dependencies.
+Download `zetrix-encryption-1.2.1.RELEASE.jar` from `libs/` and add it to your project classpath along with the bundled dependencies.
 
 ## Supported Algorithms
 

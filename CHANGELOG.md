@@ -1,6 +1,6 @@
 # Changelog — zetrix-encryption-java
 
-## [Unreleased]
+## [1.2.1.RELEASE] — 2026-11-24
 
 ### Security
 - **Invalid private key errors no longer include the key.** Loading a malformed private key (wrong prefix, type byte or checksum) threw `Private key (<key>) is invalid`, so a key with a typo could end up in any log that records the exception. The message is now always `Invalid privateKey`. Invalid public keys likewise give `Invalid publicKey` without echoing the input, so a private key passed where a public key is expected (for example to `PrivateKey.getEncAddress(String)`) is not logged either.
