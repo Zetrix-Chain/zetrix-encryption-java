@@ -1,5 +1,21 @@
 # Changelog — zetrix-encryption-java
 
+## [Unreleased]
+
+### Security
+- **Invalid private key errors no longer include the key.** Loading a malformed private key (wrong prefix, type byte or checksum) threw `Private key (<key>) is invalid`, so a key with a typo could end up in any log that records the exception. The message is now always `Invalid privateKey`. Invalid public keys likewise give `Invalid publicKey` without echoing the input, so a private key passed where a public key is expected (for example to `PrivateKey.getEncAddress(String)`) is not logged either.
+- **SM2 signatures must be exactly 64 bytes.** `PublicKey.verify` for SM2 read only the first 64 bytes, so a valid signature with extra bytes appended still verified. Signatures of any other length are now rejected, as they already were for ED25519, Dilithium3 and Hybrid.
+
+### Fixed
+- Loading a private key from its encoded string (`new PrivateKey(String)`, `PrivateKey.sign(msg, key)`, `PrivateKey.getEncPublicKey(key)`) now checks the key length for its type, as `isPrivateKeyValid` already did. A shortened or lengthened key with a valid checksum is rejected instead of loading with a wrong public key and address.
+- Dilithium3 and Hybrid private keys: the Dilithium3 public key stored in the key must belong to its secret key (checked against the public-key hash `tr` inside the secret key). Both loading and `isPrivateKeyValid` reject a key that pairs a secret key with another key's public key.
+- `addressPrefix` test: SM2 addresses start with `ZTX3` or, for about 1 in 8 keys, `ZTX4`. The test accepted only `ZTX3` and failed at random. The README key table now lists both.
+
+### Added
+- Tests: malformed-key error message, wrong-length keys with a valid checksum, mismatched Dilithium3 key pair, and wrong-length signatures (appended, truncated, empty) for all four key types.
+
+---
+
 ## [1.2.0.RELEASE] — 2026-11-20
 
 ### Security

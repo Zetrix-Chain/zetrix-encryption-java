@@ -7,7 +7,10 @@ import org.bouncycastle.pqc.crypto.mldsa.MLDSAPrivateKeyParameters;
 import org.bouncycastle.pqc.crypto.mldsa.MLDSAPublicKeyParameters;
 import org.bouncycastle.pqc.crypto.mldsa.MLDSASigner;
 
+import org.bouncycastle.crypto.digests.SHAKEDigest;
+
 import java.lang.reflect.Method;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -111,6 +114,27 @@ public class Dilithium3Helper {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** Offset and length of tr = SHAKE256(publicKey, 64) inside the encoded secret key (FIPS 204: rho 32 || K 32 || tr 64 || ...). */
+    private static final int TR_OFFSET = 64;
+    private static final int TR_LEN    = 64;
+
+    /**
+     * Check that a secret key and a public key belong together. The FIPS 204 secret key stores
+     * tr, the SHAKE256 hash of its own public key, so the two match exactly when
+     * SHAKE256(pubKey, 64) equals the stored tr.
+     */
+    public static boolean isKeyPair(byte[] privKeyBytes, byte[] pubKeyBytes) {
+        if (privKeyBytes == null || pubKeyBytes == null
+                || privKeyBytes.length != DIL3_PRIV_LEN || pubKeyBytes.length != DIL3_PUB_LEN) {
+            return false;
+        }
+        SHAKEDigest shake = new SHAKEDigest(256);
+        shake.update(pubKeyBytes, 0, pubKeyBytes.length);
+        byte[] tr = new byte[TR_LEN];
+        shake.doFinal(tr, 0, TR_LEN);
+        return MessageDigest.isEqual(tr, Arrays.copyOfRange(privKeyBytes, TR_OFFSET, TR_OFFSET + TR_LEN));
     }
 
     /**

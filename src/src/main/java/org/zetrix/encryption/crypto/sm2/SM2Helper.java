@@ -79,6 +79,9 @@ public class SM2Helper {
      * Verify raw r||s SM2 signature (64 B) against the original message.
      */
     public static boolean verify(byte[] msg, byte[] rawSig, byte[] pubKeyBytes) {
+        // r||s is exactly 64 bytes. Without this check, extra bytes after the first 64
+        // were ignored and a padded signature still verified.
+        if (rawSig == null || rawSig.length != 64) return false;
         try {
             ECDomainParameters ec = ecSpec();
             ECPoint q = ec.getCurve().decodePoint(pubKeyBytes);

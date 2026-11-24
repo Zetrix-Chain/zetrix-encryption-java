@@ -4,7 +4,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.zetrix.encryption.common.CheckKey;
 import org.zetrix.encryption.crypto.keystore.KeyStore;
+import org.zetrix.encryption.exception.EncException;
 import org.zetrix.encryption.crypto.keystore.entity.KeyStoreEty;
 import org.zetrix.encryption.crypto.mnemonic.Mnemonic;
 import org.zetrix.encryption.key.PrivateKey;
@@ -45,6 +47,42 @@ public class EncryptionTest {
         return new PrivateKey(type);
     }
 
+    /** Raw key bytes from an encoded private key: 4 header bytes, raw key, 1 zero byte, 4 checksum bytes. */
+    private static byte[] rawFromEncoded(String encPrivateKey) {
+        byte[] tmp = Base58.decode(encPrivateKey);
+        return Arrays.copyOfRange(tmp, 4, tmp.length - 5);
+    }
+
+    /** Encode raw key bytes with a valid header and checksum, as the library does. */
+    private static String encodeRaw(KeyType type, byte[] raw) {
+        byte[] buff = new byte[raw.length + 5];
+        buff[0] = (byte) 0xDA;
+        buff[1] = (byte) 0x37;
+        buff[2] = (byte) 0x9F;
+        buff[3] = (byte) type.getSignTypeByte();
+        System.arraycopy(raw, 0, buff, 4, raw.length);
+        byte[] hash2 = CheckKey.CalHash(type, CheckKey.CalHash(type, buff));
+        byte[] out = Arrays.copyOf(buff, buff.length + 4);
+        System.arraycopy(hash2, 0, out, buff.length, 4);
+        return Base58.encode(out);
+    }
+
+    private static void assertKeyRejected(String encPrivateKey) {
+        assertFalse(PrivateKey.isPrivateKeyValid(encPrivateKey));
+        try {
+            new PrivateKey(encPrivateKey);
+            fail("new PrivateKey must reject the key");
+        } catch (EncException e) {
+            assertEquals("Invalid privateKey", e.getMessage());
+        }
+        try {
+            PrivateKey.sign("msg".getBytes(), encPrivateKey);
+            fail("PrivateKey.sign must reject the key");
+        } catch (EncException e) {
+            assertEquals("Invalid privateKey", e.getMessage());
+        }
+    }
+
     // ---- tests ----
 
     @Test
@@ -60,8 +98,12 @@ public class EncryptionTest {
         String addr = newKey().getEncAddress();
         switch (type) {
             case ED25519:
+                assertTrue("ED25519 address must start with ZTX3", addr.startsWith("ZTX3"));
+                break;
             case SM2:
-                assertTrue("ED25519/SM2 address must start with ZTX3", addr.startsWith("ZTX3"));
+                // The SM2 address byte encodes to ZTX3 or, for about 1 in 8 keys, ZTX4 in Base58.
+                assertTrue("SM2 address must start with ZTX3 or ZTX4",
+                        addr.startsWith("ZTX3") || addr.startsWith("ZTX4"));
                 break;
             case DILITHIUM3:
                 assertTrue("Dilithium3 address must start with ZTX4", addr.startsWith("ZTX4"));
@@ -218,5 +260,76 @@ public class EncryptionTest {
         pubBlob[1] = (byte) 0x04; // CFCA sign type byte — not whitelisted
         assertFalse("CFCA sign byte 0x04 must be rejected as public key",
             PrivateKey.isPublicKeyValid(HexFormat.byteToHex(pubBlob)));
+    }
+
+    @Test
+    public void invalidPrivateKeyErrorDoesNotContainKey() throws Exception {
+        String key = newKey().getEncPrivateKey();
+        // Change one character in the middle: still Base58, but the checksum no longer matches.
+        int i = key.length() / 2;
+        char c = key.charAt(i) == 'a' ? 'b' : 'a';
+        String wrong = key.substring(0, i) + c + key.substring(i + 1);
+        for (int n = 0; n < 2; n++) {
+            try {
+                if (n == 0) new PrivateKey(wrong); else PrivateKey.getEncPublicKey(wrong);
+                fail("a key with a wrong checksum must be rejected");
+            } catch (EncException e) {
+                assertEquals("Invalid privateKey", e.getMessage());
+                assertFalse(e.getMessage().contains(wrong));
+            }
+        }
+    }
+
+    @Test
+    public void privateKeyPassedAsPublicKeyIsNotEchoed() throws Exception {
+        // Callers can pass a private key where a public key is expected, e.g. PrivateKey.getEncAddress(String).
+        String key = newKey().getEncPrivateKey();
+        try {
+            PrivateKey.getEncAddress(key);
+            fail("a private key must not be accepted as a public key");
+        } catch (EncException e) {
+            assertEquals("Invalid publicKey", e.getMessage());
+        }
+        try {
+            PublicKey.verify("msg".getBytes(), new byte[64], key);
+            fail("a private key must not be accepted as a public key");
+        } catch (EncException e) {
+            assertFalse(e.getMessage().contains(key));
+        }
+    }
+
+    @Test
+    public void truncatedPrivateKeyWithValidChecksumRejected() throws Exception {
+        byte[] raw = rawFromEncoded(newKey().getEncPrivateKey());
+        assertKeyRejected(encodeRaw(type, Arrays.copyOf(raw, raw.length - 1)));
+        assertKeyRejected(encodeRaw(type, Arrays.copyOf(raw, raw.length + 1)));
+    }
+
+    @Test
+    public void privateKeyWithForeignDilithiumPublicKeyRejected() throws Exception {
+        if (type != KeyType.DILITHIUM3 && type != KeyType.HYBRID) return;
+        byte[] rawA = rawFromEncoded(newKey().getEncPrivateKey());
+        byte[] rawB = rawFromEncoded(newKey().getEncPrivateKey());
+        // Both layouts end with the 1,952-byte Dilithium3 public key: put key B's there.
+        int pubLen = 1952;
+        byte[] mixed = rawA.clone();
+        System.arraycopy(rawB, rawB.length - pubLen, mixed, mixed.length - pubLen, pubLen);
+        assertKeyRejected(encodeRaw(type, mixed));
+    }
+
+    @Test
+    public void signatureWithWrongLengthRejected() throws Exception {
+        PrivateKey priv = newKey();
+        byte[] msg = "hello zetrix".getBytes();
+        byte[] sig = priv.sign(msg);
+        String pub = priv.getEncPublicKey();
+        byte[] padded = Arrays.copyOf(sig, sig.length + 8);
+        Arrays.fill(padded, sig.length, padded.length, (byte) 0x5A);
+        assertFalse("signature with bytes appended must not verify", PublicKey.verify(msg, padded, pub));
+        assertFalse("signature with one byte appended must not verify",
+                PublicKey.verify(msg, Arrays.copyOf(sig, sig.length + 1), pub));
+        assertFalse("truncated signature must not verify",
+                PublicKey.verify(msg, Arrays.copyOf(sig, sig.length - 1), pub));
+        assertFalse("empty signature must not verify", PublicKey.verify(msg, new byte[0], pub));
     }
 }

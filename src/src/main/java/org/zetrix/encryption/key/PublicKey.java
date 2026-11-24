@@ -63,24 +63,24 @@ public class PublicKey {
         return verifyMessage(msg, signMsg, member);
     }
 
-    /** Decode an encoded public key (hex) into the given KeyMember. T7 fix. */
+    /** Decode an encoded public key (hex) into the given KeyMember. */
     private static void getPublicKey(String bPkey, KeyMember member) throws EncException {
         if (null == bPkey) throw new EncException("public key cannot be null");
-        if (!HexFormat.isHexString(bPkey)) throw new EncException("public key (" + bPkey + ") is invalid");
+        if (!HexFormat.isHexString(bPkey)) throw new EncException("Invalid publicKey");
 
         byte[] buffPKey = HexFormat.hexToByte(bPkey);
         if (buffPKey.length < 6 || buffPKey[0] != (byte)0xB0) {
-            throw new EncException("public key (" + bPkey + ") is invalid");
+            throw new EncException("Invalid publicKey");
         }
 
-        // T7: whitelist-based type lookup (no ordinal math, no buffPKey[1] != 1 hardcode)
+        // whitelist-based type lookup (no ordinal math, no buffPKey[1] != 1 hardcode)
         KeyType type = KeyType.fromSignTypeByte(buffPKey[1] & 0xFF);
         if (type == null) {
-            throw new EncException("public key (" + bPkey + ") is invalid");
+            throw new EncException("Invalid publicKey");
         }
 
         if (!CheckKey.CheckSum(type, buffPKey)) {
-            throw new EncException("public key (" + bPkey + ") is invalid");
+            throw new EncException("Invalid publicKey");
         }
 
         byte[] rawPKey = new byte[buffPKey.length - 6];
@@ -89,7 +89,7 @@ public class PublicKey {
         member.setKeyType(type);
     }
 
-    /** Validate an encoded public key string. T9 fix: whitelist, detect type for CalHash. */
+    /** Validate an encoded public key string. Whitelists the type byte and detects the type for CalHash. */
     private static boolean encPublicKeyValid(String encPublicKey) {
         try {
             if (null == encPublicKey || !HexFormat.isHexString(encPublicKey)) return false;
@@ -125,12 +125,12 @@ public class PublicKey {
         }
     }
 
-    /** Encode raw public key + address into Base58 address. T8 fix: uses getAddressByte(). */
+    /** Encode raw public key + address into Base58 address. */
     private static String encAddress(KeyType type, byte[] rawPKey) {
         byte[] buff = new byte[23];
         buff[0] = (byte) 0xF0;
         buff[1] = (byte) 0x26;
-        buff[2] = (byte) type.getAddressByte(); // T8: explicit address byte, not ordinal+1
+        buff[2] = (byte) type.getAddressByte(); // explicit address byte, not ordinal+1
 
         byte[] hashPkey = CheckKey.CalHash(type, rawPKey);
         System.arraycopy(hashPkey, 12, buff, 3, 20);
@@ -144,14 +144,14 @@ public class PublicKey {
         return Base58.encode(tmp);
     }
 
-    /** Validate an encoded address string. T9 fix: whitelist addr byte, detect type for CalHash. */
+    /** Validate an encoded address string. Whitelists the address byte and detects the type for CalHash. */
     private static boolean encAddressValid(String encAddress) {
         try {
             if (null == encAddress) return false;
             byte[] tmp = Base58.decode(encAddress);
             if (tmp.length != 27 || tmp[0] != (byte)0xF0 || tmp[1] != (byte)0x26) return false;
 
-            // T9: whitelist address byte {0x01, 0x02, 0x04, 0x06}; detect type for CalHash
+            // whitelist address byte {0x01, 0x02, 0x04, 0x06}; detect type for CalHash
             KeyType type = KeyType.fromAddressByte(tmp[2] & 0xFF);
             if (type == null) return false;
 

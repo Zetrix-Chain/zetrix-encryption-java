@@ -35,7 +35,7 @@ Download `zetrix-encryption-1.2.0.RELEASE.jar` from `libs/` and add it to your p
 | Algorithm | Key Type Constant | Address Prefix | Private Key | Public Key | Signature |
 |-----------|-------------------|----------------|-------------|------------|-----------|
 | ED25519 | `KeyType.ED25519` | `ZTX3` | 32 B | 32 B | 64 B |
-| SM2 | `KeyType.SM2` | `ZTX3` | 32 B | 65 B | 64 B |
+| SM2 | `KeyType.SM2` | `ZTX3` or `ZTX4` | 32 B | 65 B | 64 B |
 | Dilithium3 (ML-DSA-65) | `KeyType.DILITHIUM3` | `ZTX4` | 4,032 B | 1,952 B | 3,309 B |
 | Hybrid (ED25519 + Dilithium3) | `KeyType.HYBRID` | `ZTX5` | 6,016 B | 1,984 B | 3,373 B |
 

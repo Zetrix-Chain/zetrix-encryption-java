@@ -156,28 +156,42 @@ public class PrivateKey {
 
     // ---- Private helpers ----
 
-    /** Decode and validate an encoded private key into the given KeyMember. */
+    /**
+     * Decode and validate an encoded private key into the given KeyMember.
+     * Error messages never include the key string, so it cannot leak into logs.
+     */
     private static void getPrivateKey(String bSkey, KeyMember member) throws EncException {
+        if (null == bSkey) throw new EncException("Private key cannot be null");
         try {
-            if (null == bSkey) throw new EncException("Private key cannot be null");
-
             byte[] skeyTmp = Base58.decode(bSkey);
             if (skeyTmp.length <= 9 || skeyTmp[0] != (byte)0xDA || skeyTmp[1] != (byte)0x37 || skeyTmp[2] != (byte)0x9F) {
-                throw new EncException("Private key (" + bSkey + ") is invalid");
+                throw new EncException("Invalid privateKey");
             }
 
-            // T6b: whitelist-based type lookup (no ordinal math)
+            // whitelist-based type lookup (no ordinal math)
             KeyType type = KeyType.fromSignTypeByte(skeyTmp[3] & 0xFF);
             if (type == null) {
-                throw new EncException("Private key (" + bSkey + ") is invalid");
+                throw new EncException("Invalid privateKey");
+            }
+
+            // same length rule as isPrivateKeyValid: 4 header + rawKey + 1 zero + 4 checksum
+            if (skeyTmp.length - 9 != expectedPrivRawLen(type)) {
+                throw new EncException("Invalid privateKey");
             }
 
             if (!CheckKey.CheckSum(type, skeyTmp)) {
-                throw new EncException("Private key (" + bSkey + ") is invalid");
+                throw new EncException("Invalid privateKey");
             }
 
             byte[] rawSKey = new byte[skeyTmp.length - 9];
             System.arraycopy(skeyTmp, 4, rawSKey, 0, rawSKey.length);
+
+            // Dilithium3 and Hybrid keys carry their Dilithium3 public key next to the secret key.
+            // Make sure that public key belongs to the secret key, so the derived address is right.
+            if (!dilithiumPairMatches(type, rawSKey)) {
+                throw new EncException("Invalid privateKey");
+            }
+
             member.setKeyType(type);
             member.setRawSKey(rawSKey);
         } catch (EncException e) {
@@ -185,6 +199,19 @@ public class PrivateKey {
         } catch (Exception e) {
             throw new EncException("Invalid privateKey");
         }
+    }
+
+    private static boolean dilithiumPairMatches(KeyType type, byte[] rawSKey) {
+        int off;
+        switch (type) {
+            case DILITHIUM3: off = 0; break;
+            case HYBRID:     off = HybridHelper.ED25519_SEED_LEN; break;
+            default:         return true;
+        }
+        byte[] priv = Arrays.copyOfRange(rawSKey, off, off + Dilithium3Helper.DIL3_PRIV_LEN);
+        byte[] pub  = Arrays.copyOfRange(rawSKey, off + Dilithium3Helper.DIL3_PRIV_LEN,
+                off + Dilithium3Helper.DIL3_PRIV_LEN + Dilithium3Helper.DIL3_PUB_LEN);
+        return Dilithium3Helper.isKeyPair(priv, pub);
     }
 
     /** Derive the raw public key from the raw private key in a KeyMember. */
@@ -215,7 +242,7 @@ public class PrivateKey {
         }
     }
 
-    /** Encode a raw private key to Base58-encoded string. T4 fix: uses getSignTypeByte(). */
+    /** Encode a raw private key to Base58-encoded string. */
     private static String encPrivateKey(KeyType type, byte[] rawSKey) throws EncException {
         if (null == rawSKey) throw new EncException("Private key is null");
 
@@ -223,7 +250,7 @@ public class PrivateKey {
         buff[0] = (byte) 0xDA;
         buff[1] = (byte) 0x37;
         buff[2] = (byte) 0x9F;
-        buff[3] = (byte) type.getSignTypeByte(); // T4: explicit byte, not ordinal+1
+        buff[3] = (byte) type.getSignTypeByte(); // explicit type byte, not ordinal+1
         System.arraycopy(rawSKey, 0, buff, 4, rawSKey.length);
 
         byte[] hash1 = CheckKey.CalHash(type, buff);
@@ -235,7 +262,7 @@ public class PrivateKey {
         return Base58.encode(tmp);
     }
 
-    /** Validate an encoded private key string. T6 fix: variable length, whitelist type byte. */
+    /** Validate an encoded private key string. Checks the type byte, length and checksum. */
     private static boolean encPrivateKeyValid(String encPrivateKey) {
         try {
             if (null == encPrivateKey) return false;
@@ -244,7 +271,7 @@ public class PrivateKey {
             if (tmp.length < 10 || tmp[0] != (byte)0xDA || tmp[1] != (byte)0x37 || tmp[2] != (byte)0x9F) {
                 return false;
             }
-            // T6: detect type from key byte (no ordinal lookup)
+            // detect type from key byte (no ordinal lookup)
             KeyType type = KeyType.fromSignTypeByte(tmp[3] & 0xFF);
             if (type == null) return false;
 
@@ -258,7 +285,9 @@ public class PrivateKey {
 
             byte[] hash1 = CheckKey.CalHash(type, buff);
             byte[] hash2 = CheckKey.CalHash(type, hash1);
-            return Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum);
+            if (!Arrays.equals(Arrays.copyOfRange(hash2, 0, 4), checkSum)) return false;
+
+            return dilithiumPairMatches(type, Arrays.copyOfRange(tmp, 4, len - 5));
         } catch (Exception e) {
             return false;
         }
@@ -274,13 +303,13 @@ public class PrivateKey {
         }
     }
 
-    /** Encode a raw public key to hex. T5 fix: uses getSignTypeByte(). */
+    /** Encode a raw public key to hex. */
     static String encPublicKey(KeyType type, byte[] rawPKey) throws EncException {
         if (null == rawPKey) throw new EncException("Public key is null");
 
         byte[] buff = new byte[rawPKey.length + 2];
         buff[0] = (byte) 0xB0;
-        buff[1] = (byte) type.getSignTypeByte(); // T5: explicit byte, not ordinal+1
+        buff[1] = (byte) type.getSignTypeByte(); // explicit type byte, not ordinal+1
         System.arraycopy(rawPKey, 0, buff, 2, rawPKey.length);
 
         byte[] hash1 = CheckKey.CalHash(type, buff);
