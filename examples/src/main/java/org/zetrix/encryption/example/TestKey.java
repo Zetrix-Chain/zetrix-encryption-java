@@ -20,8 +20,10 @@ public class TestKey {
 	
 	ZTXChainAccount srcAccount = new ZTXChainAccount();
 	public static void main(String[] args) throws IllegalArgumentException, Exception {
-		// test signature and verify
 		test_ED25519();
+		test_SM2();
+		test_Dilithium3();
+		test_Hybrid();
 
 		// test transaction
 //		System.out.println("\n\n================ teat create account ==================");
@@ -361,6 +363,86 @@ public class TestKey {
 		}
 	}
 	
+	public static void test_SM2() {
+		System.out.println("\n================ SM2 ================");
+		try {
+			PrivateKey priKey = new PrivateKey(KeyType.SM2);
+			String encPriv = priKey.getEncPrivateKey();
+			String encPub  = priKey.getEncPublicKey();
+			String addr    = priKey.getEncAddress();
+			System.out.println("SM2 private key: " + encPriv);
+			System.out.println("SM2 public key:  " + encPub);
+			System.out.println("SM2 address:     " + addr + " (prefix ZTX3)");
+
+			// Static derivation
+			System.out.println("static public key: " + PrivateKey.getEncPublicKey(encPriv));
+			System.out.println("static address:    " + PrivateKey.getEncAddress(encPub));
+
+			// Validation
+			System.out.println("priv valid: " + PrivateKey.isPrivateKeyValid(encPriv));
+			System.out.println("pub  valid: " + PrivateKey.isPublicKeyValid(encPub));
+			System.out.println("addr valid: " + PrivateKey.isAddressValid(addr));
+
+			// Sign / verify
+			String msg = "test";
+			byte[] sig = priKey.sign(msg.getBytes());
+			System.out.println("signature:  " + HexFormat.byteToHex(sig));
+			System.out.println("verify:     " + PublicKey.verify(msg.getBytes(), sig, encPub));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void test_Dilithium3() {
+		System.out.println("\n================ Dilithium3 (ML-DSA-65 / FIPS 204) ================");
+		try {
+			PrivateKey priKey = new PrivateKey(KeyType.DILITHIUM3);
+			String encPriv = priKey.getEncPrivateKey();
+			String encPub  = priKey.getEncPublicKey();
+			String addr    = priKey.getEncAddress();
+			System.out.println("Dilithium3 private key: " + encPriv.substring(0, 40) + "... (truncated)");
+			System.out.println("Dilithium3 public key:  " + encPub.substring(0, 40) + "... (truncated)");
+			System.out.println("Dilithium3 address:     " + addr + " (prefix ZTX4)");
+
+			System.out.println("static public key eq: " + PrivateKey.getEncPublicKey(encPriv).equals(encPub));
+			System.out.println("priv valid: " + PrivateKey.isPrivateKeyValid(encPriv));
+			System.out.println("pub  valid: " + PrivateKey.isPublicKeyValid(encPub));
+			System.out.println("addr valid: " + PrivateKey.isAddressValid(addr));
+
+			String msg = "test";
+			byte[] sig = priKey.sign(msg.getBytes());
+			System.out.println("signature length: " + sig.length + " bytes");
+			System.out.println("verify: " + PublicKey.verify(msg.getBytes(), sig, encPub));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void test_Hybrid() {
+		System.out.println("\n================ Hybrid (ED25519 + Dilithium3) ================");
+		try {
+			PrivateKey priKey = new PrivateKey(KeyType.HYBRID);
+			String encPriv = priKey.getEncPrivateKey();
+			String encPub  = priKey.getEncPublicKey();
+			String addr    = priKey.getEncAddress();
+			System.out.println("Hybrid private key: " + encPriv.substring(0, 40) + "... (truncated)");
+			System.out.println("Hybrid public key:  " + encPub.substring(0, 40) + "... (truncated)");
+			System.out.println("Hybrid address:     " + addr + " (prefix ZTX5)");
+
+			System.out.println("static public key eq: " + PrivateKey.getEncPublicKey(encPriv).equals(encPub));
+			System.out.println("priv valid: " + PrivateKey.isPrivateKeyValid(encPriv));
+			System.out.println("pub  valid: " + PrivateKey.isPublicKeyValid(encPub));
+			System.out.println("addr valid: " + PrivateKey.isAddressValid(addr));
+
+			String msg = "test";
+			byte[] sig = priKey.sign(msg.getBytes());
+			System.out.println("signature length: " + sig.length + " bytes");
+			System.out.println("verify: " + PublicKey.verify(msg.getBytes(), sig, encPub));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	public static void test_ED25519() {
 		try {
 			PrivateKey priKey = new PrivateKey(KeyType.ED25519);

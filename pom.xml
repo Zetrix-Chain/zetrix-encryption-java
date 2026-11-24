@@ -6,7 +6,7 @@
 
     <groupId>org.zetrix.encryption</groupId>
     <artifactId>zetrix-encryption-java</artifactId>
-    <version>1.0.0.RELEASE</version>
+    <version>1.2.1.RELEASE</version>
 
     <packaging>pom</packaging>
 
@@ -14,6 +14,14 @@
 		<module>src</module>
 		<module>examples</module>
     </modules>
+
+    <distributionManagement>
+        <repository>
+            <id>zetrix-releases</id>
+            <name>releases</name>
+            <url>https://maven.zetrix.com/repository/releases/</url>
+        </repository>
+    </distributionManagement>
 
     <build>
         <pluginManagement>

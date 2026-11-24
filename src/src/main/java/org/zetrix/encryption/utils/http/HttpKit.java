@@ -14,18 +14,18 @@ import java.net.URLEncoder;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 
+/**
+ * HTTP(S) client.
+ *
+ * <p>HTTPS connections use the JVM default trust store and hostname verification.
+ * Do not install a custom TrustManager or HostnameVerifier here.
+ */
 public class HttpKit {
     
     private static final String DEFAULT_CHARSET = "UTF-8";
@@ -41,19 +41,12 @@ public class HttpKit {
      */
     public static String get(String url,Boolean https) throws NoSuchAlgorithmException, NoSuchProviderException, IOException, KeyManagementException {
         StringBuffer bufferRes = null;
-        TrustManager[] tm = { new MyX509TrustManager() };  
-        SSLContext sslContext = SSLContext.getInstance("SSL", "SunJSSE");  
-        sslContext.init(null, tm, new java.security.SecureRandom());  
-        SSLSocketFactory ssf = sslContext.getSocketFactory();
-        
         URL urlGet = new URL(url);
         HttpsURLConnection http = (HttpsURLConnection) urlGet.openConnection();
         http.setConnectTimeout(25000);
         http.setReadTimeout(25000);
         http.setRequestMethod("GET");
         http.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
-        http.setSSLSocketFactory(ssf);
-        http.setHostnameVerifier(new Verifier());
         http.setDoOutput(true);
         http.setDoInput(true);
         http.connect();
@@ -134,19 +127,12 @@ public class HttpKit {
      */
     public static String post(String url, String params,Boolean https) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, KeyManagementException {
     	StringBuffer bufferRes = null;
-        TrustManager[] tm = { new MyX509TrustManager() };
-        SSLContext sslContext = SSLContext.getInstance("SSL", "SunJSSE");
-        sslContext.init(null, tm, new java.security.SecureRandom());
-        SSLSocketFactory ssf = sslContext.getSocketFactory();
-
         URL urlGet = new URL(url);
         HttpsURLConnection http = (HttpsURLConnection) urlGet.openConnection();
         http.setConnectTimeout(50000);
         http.setReadTimeout(50000);
         http.setRequestMethod("POST");
         http.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
-        http.setSSLSocketFactory(ssf);
-        http.setHostnameVerifier(new Verifier());
         http.setDoOutput(true);
         http.setDoInput(true);
         http.connect();
@@ -261,20 +247,5 @@ public class HttpKit {
     		params = "{\"expire_seconds\": 1800, \"action_name\": \"QR_LIMIT_STR_SCENE\", \"action_info\": {\"scene\": {\"scene_str\": \""+sceneId+"\"}}}";
     	}
     	return HttpKit.post(url, params);
-    }
-}
-
-class MyX509TrustManager implements X509TrustManager {
-
-    public X509Certificate[] getAcceptedIssuers() {
-        return null;  
-    }
-
-    public void checkClientTrusted(X509Certificate[] chain, String authType)
-            throws CertificateException {
-    }
-
-    public void checkServerTrusted(X509Certificate[] chain, String authType)
-            throws CertificateException {
     }
 }
